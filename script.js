@@ -722,7 +722,15 @@ function init() {
   elements.qtyPlus.addEventListener("click", () => updateQuantity(state.quantity + 1));
   elements.orderTypeInputs.forEach((input) => input.addEventListener("change", updateOrderType));
   elements.form.addEventListener("submit", handleSubmit);
-  $$(".pizza-mode-btn").forEach(btn => btn.addEventListener("click", () => { state.pizzaMode = btn.dataset.mode; renderToppings(); updateUI(); }));
+  $$(".pizza-mode-btn").forEach(btn => btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    const mode = btn.dataset.mode;
+    if (mode !== "whole" && mode !== "half") return;
+    state.pizzaMode = mode;
+    elements.toppingsError.textContent = "";
+    renderToppings();
+    updateUI();
+  }));
   loadToppingAvailability();
 
   elements.anotherOrder.addEventListener("click", () => {

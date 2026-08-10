@@ -71,7 +71,17 @@ async function submit(e){
 }
 function init(){
   $("#login-form").addEventListener("submit",login); $("#logout").addEventListener("click",()=>supabaseClient.auth.signOut()); $("#staff-order-form").addEventListener("submit",submit); $("#new-order").addEventListener("click",()=>$("#success").classList.add("hidden"));
-  $$(".mode[data-mode]").forEach(b=>b.addEventListener("click",()=>{state.mode=b.dataset.mode; $$(".mode[data-mode]").forEach(x=>x.classList.toggle("active",x===b)); renderToppings(); updateSummary();}));
+  $$(".mode[data-mode]").forEach(b=>b.addEventListener("click",(event)=>{
+    event.preventDefault();
+    const mode=b.dataset.mode;
+    if(mode!=="whole" && mode!=="half") return;
+    state.mode=mode;
+    $$(".mode[data-mode]").forEach(x=>x.classList.toggle("active",x===b));
+    $("#whole-builder").classList.toggle("hidden",mode!=="whole");
+    $("#half-builder").classList.toggle("hidden",mode!=="half");
+    renderToppings();
+    updateSummary();
+  }));
   $$(".mode[data-type]").forEach(b=>b.addEventListener("click",()=>{state.type=b.dataset.type; $$(".mode[data-type]").forEach(x=>x.classList.toggle("active",x===b)); $("#delivery-fields").classList.toggle("hidden",state.type!=="delivery"); updateSummary();}));
   $("#qty-minus").addEventListener("click",()=>{state.quantity=Math.max(1,state.quantity-1);$("#qty").textContent=state.quantity;updateSummary();});
   $("#qty-plus").addEventListener("click",()=>{state.quantity++;$("#qty").textContent=state.quantity;updateSummary();});
