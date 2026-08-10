@@ -30,7 +30,31 @@ async function loadOrders(){if(!supabaseClient){$("#orders-list").innerHTML='<di
 function upsertOrder(o,isNew=false){const i=state.orders.findIndex(x=>x.id===o.id);if(i===-1)state.orders.push(o);else state.orders[i]=o;updateStats();if(isNew)state.selectedId=o.id;renderOrders();renderDetails();if(isNew)showNewOrderAlert(o)}
 
 function subscribeToOrders(){if(!supabaseClient)return;if(state.channel)supabaseClient.removeChannel(state.channel);state.channel=supabaseClient.channel("pizza-orders-live").on("postgres_changes",{event:"INSERT",schema:"public",table:"pizza_orders"},p=>upsertOrder(p.new,true)).on("postgres_changes",{event:"UPDATE",schema:"public",table:"pizza_orders"},p=>upsertOrder(p.new,false)).subscribe(s=>{if(s==="SUBSCRIBED")setConnection(true);else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(s)){setConnection(false);setTimeout(()=>subscribeToOrders(),2500)}})}
-async function updateStatus(id,status){if(!supabaseClient)return;const{data,error}=await supabaseClient.from("pizza_orders").update({status}).eq("id",id).select("*").single();if(error){console.error(error);showToast("Could not update the order status.");return}upsertOrder(data,false);showToast(`Order ${orderNumber(id)} marked ${statusLabel(status)}.`)}
+async function updateStatus(id,status){
+  if(!supabaseClient)return;
+
+  const { error } = await supabaseClient
+    .from("pizza_orders")
+    .update({ status })
+    .eq("id", id);
+
+  if(error){
+    console.error("Supabase status update failed:", error);
+    showToast("Could not update the order status.");
+    return;
+  }
+
+  // Update the dashboard immediately. Realtime will also sync the change
+  // to the customer tracker and other staff screens.
+  const existing = state.orders.find(o => o.id === id);
+  if(existing){
+    upsertOrder({...existing, status}, false);
+  } else {
+    await loadOrders();
+  }
+
+  showToast(`Order ${orderNumber(id)} marked ${statusLabel(status)}.`);
+}
 function setupFilters(){$$("#filters .filter").forEach(b=>b.addEventListener("click",()=>{state.filter=b.dataset.filter;$$("#filters .filter").forEach(x=>x.classList.toggle("active",x===b));renderOrders()}));$("#order-search")?.addEventListener("input",e=>{state.search=e.target.value;renderOrders()})}
 function setupSound(){$("#sound-toggle").addEventListener("click",()=>{state.soundOn=!state.soundOn;const b=$("#sound-toggle");b.textContent=state.soundOn?"🔔 Sound On":"🔕 Sound Off";b.setAttribute("aria-pressed",String(state.soundOn));if(state.soundOn)playNotification()})}
 async function handleLogin(e){e.preventDefault();if(!supabaseClient){$("#login-error").textContent="Add your Supabase Project URL and publishable key to dashboard.js first.";return}const email=$("#login-email").value.trim(),password=$("#login-password").value,b=$("#login-button");b.disabled=true;b.textContent="Signing in…";$("#login-error").textContent="";const{error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)$("#login-error").textContent=error.message;b.disabled=false;b.textContent="Sign In"}
