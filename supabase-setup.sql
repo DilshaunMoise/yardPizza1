@@ -110,3 +110,29 @@ $$;
 
 revoke all on function public.get_pizza_order_status(text) from public;
 grant execute on function public.get_pizza_order_status(text) to anon, authenticated;
+
+
+-- Safe upgrade for the live database: allow the full staff workflow.
+do $$
+begin
+  alter table public.pizza_orders drop constraint if exists pizza_orders_status_check;
+exception when undefined_object then null;
+end $$;
+
+alter table public.pizza_orders
+  add constraint pizza_orders_status_check
+  check (status in ('new','preparing','in_oven','ready','completed','cancelled'));
+
+drop policy if exists "Staff can update pizza orders" on public.pizza_orders;
+create policy "Staff can update pizza orders"
+on public.pizza_orders
+for update
+to authenticated
+using (exists (
+  select 1 from public.staff_users
+  where staff_users.user_id = (select auth.uid())
+))
+with check (exists (
+  select 1 from public.staff_users
+  where staff_users.user_id = (select auth.uid())
+));
