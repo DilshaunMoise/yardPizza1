@@ -36,3 +36,28 @@ This build keeps the working Supabase customer-order flow and adds:
 8. The customer confirmation tracker polls the secure status function and updates as staff changes status.
 
 The current pizza entry price is preserved at $20; Cheese Pizza uses that same existing entry price so no new price was invented.
+
+
+## New upgrades in this build
+- 12-inch pizzas only
+- New Veg topping
+- Whole or Half & Half topping selection on customer and staff ordering
+- Half-and-half toppings stored clearly as left/right sides
+- Staff tablet ordering at `staff.html`
+- Staff orders and online orders share the same live dashboard
+- Sequential order numbers when the Supabase upgrade is run
+- Louder repeated new-order alert with tablet vibration where supported
+- Today's sales total and online/staff source filters
+- Customer order history in the dashboard
+- Staff-controlled sold-out topping availability
+- Existing customer live status tracker remains in place
+- Existing Formspree backup remains for online orders
+
+### Deployment
+1. Upload all site files, including `staff.html`, `staff.js`, and `staff.css`.
+2. Run the updated `supabase-setup.sql` in the existing Supabase project.
+3. Test one online order and one staff order.
+4. Open `staff.html` on the store tablet and sign in with the existing staff Auth account.
+5. Use the Dashboard menu controls to mark toppings sold out when needed.
+
+SMS notifications and additional security changes are intentionally not included in this build, per the requested scope.

@@ -135,7 +135,7 @@
         <div class="section-heading builder-heading">
           <p class="eyebrow">BUILD YOUR PIZZA</p>
           <h2>Your pizza. <span>Your picks.</span></h2>
-          <p>Select your toppings, choose your quantity, then pick pickup or delivery.</p>
+          <p>Choose whole-pizza or half-and-half toppings, then pick your quantity and pickup or delivery.</p>
         </div>
 
         <div class="builder-layout">
@@ -148,12 +148,22 @@
               <div class="size-badge">12&quot; PIZZA</div>
             </div>
 
-            <div class="topping-grid" id="topping-grid" aria-label="Available pizza toppings"></div>
+            <div class="pizza-mode" role="group" aria-label="Pizza topping style">
+              <button type="button" class="pizza-mode-btn active" data-mode="whole">Whole Pizza</button>
+              <button type="button" class="pizza-mode-btn" data-mode="half">Half &amp; Half</button>
+            </div>
+            <div id="whole-builder">
+              <div class="topping-grid" id="topping-grid" aria-label="Available pizza toppings"></div>
+            </div>
+            <div id="half-builder" class="half-builder hidden">
+              <div class="half-column"><h4>Left Half</h4><div class="topping-grid" id="left-topping-grid"></div></div>
+              <div class="half-column"><h4>Right Half</h4><div class="topping-grid" id="right-topping-grid"></div></div>
+            </div>
             <p class="field-error" id="toppings-error" role="alert"></p>
 
             <div class="selection-bar">
-              <span><strong id="selected-count">0</strong> toppings selected</span>
-              <span>Cheese pizza or up to 2 toppings included in base price</span>
+              <span><strong id="selected-count">0</strong> unique toppings selected</span>
+              <span>First 2 unique toppings included</span>
             </div>
 
             <div class="builder-divider"></div>
@@ -291,7 +301,7 @@
             <span>01</span>
             <div>🍕</div>
             <h3>Build it</h3>
-            <p>Choose from our 8 available toppings for your 12&quot; pizza.</p>
+            <p>Choose from our 9 available toppings for your 12&quot; pizza, including Veg.</p>
           </div>
           <div class="step-card">
             <span>02</span>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow"><title>Pizza Yard | Staff Ordering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="staff.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js"></script>
+</head>
+<body>
+<main class="staff-shell">
+<section id="login-view" class="login-view"><div class="login-card"><div class="brand">🍕 Pizza Yard</div><p class="eyebrow">STAFF ORDERING</p><h1>Take an order</h1><p class="muted">Sign in, enter the customer's order, and send it straight to the live dashboard.</p><form id="login-form"><label>Email<input id="login-email" type="email" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit" id="login-button">Sign In</button><p id="login-error" class="error"></p></form></div></section>
+<section id="app-view" class="hidden">
+<header class="staff-header"><div><div class="brand">🍕 Pizza Yard</div><h1>Staff Order</h1><p>Tablet-friendly in-store ordering</p></div><div class="header-actions"><a class="ghost" href="dashboard.html">Live Dashboard</a><button class="ghost" id="logout" type="button">Sign Out</button></div></header>
+<div class="staff-layout">
+<form id="staff-order-form" class="card" novalidate>
+<div class="section-head"><div><span class="eyebrow">CUSTOMER</span><h2>Who is ordering?</h2></div><span class="badge">STAFF ORDER</span></div>
+<div class="grid2"><label>Customer name<input id="customer-name" required placeholder="Full name"></label><label>Phone<input id="customer-phone" inputmode="numeric" required placeholder="7121777"></label></div>
+<label>Email <span class="muted">(optional)</span><input id="customer-email" type="email" placeholder="customer@email.com"></label>
+<div class="divider"></div>
+<div class="section-head"><div><span class="eyebrow">PIZZA</span><h2>Build the 12&quot; pizza</h2></div><span class="badge">12&quot; ONLY</span></div>
+<div class="mode-toggle"><button type="button" class="mode active" data-mode="whole">Whole Pizza</button><button type="button" class="mode" data-mode="half">Half &amp; Half</button></div>
+<div id="whole-builder"><div id="whole-toppings" class="topping-grid"></div><p id="whole-error" class="error"></p></div>
+<div id="half-builder" class="hidden"><div class="half-grid"><section><h3>Left half</h3><div id="left-toppings" class="topping-grid"></div></section><section><h3>Right half</h3><div id="right-toppings" class="topping-grid"></div></section></div><p class="muted small">Pricing counts unique toppings across both halves. The first two unique toppings are included.</p><p id="half-error" class="error"></p></div>
+<div class="quantity-row"><div><span class="eyebrow">QUANTITY</span><h3>How many boxes?</h3></div><div class="qty"><button type="button" id="qty-minus">−</button><output id="qty">1</output><button type="button" id="qty-plus">+</button></div></div>
+<div class="divider"></div>
+<div class="section-head"><div><span class="eyebrow">FULFILLMENT</span><h2>Pickup or delivery?</h2></div></div>
+<div class="mode-toggle"><button type="button" class="mode active" data-type="pickup">🏪 Pickup</button><button type="button" class="mode" data-type="delivery">🛵 Delivery</button></div>
+<div id="delivery-fields" class="hidden"><label>Delivery address<textarea id="address" rows="3" placeholder="Customer's delivery address"></textarea></label><p id="delivery-error" class="error"></p></div>
+<label>Special instructions <span class="muted">(optional)</span><textarea id="instructions" rows="3" placeholder="Extra notes for the kitchen"></textarea></label>
+<button class="primary send" id="send-order" type="submit">SEND ORDER TO DASHBOARD →</button><p id="submit-error" class="error"></p>
+</form>
+<aside class="card summary"><div class="section-head"><div><span class="eyebrow">LIVE SUMMARY</span><h2>Order</h2></div><span class="live-dot">●</span></div><div id="summary-pizza" class="summary-pizza">12&quot; Pizza</div><div id="summary-toppings" class="chips"><span class="muted">Cheese Pizza</span></div><div class="summary-lines"><div><span>Unit price</span><strong id="unit-price">$20.00</strong></div><div><span>Quantity</span><strong id="summary-qty">1</strong></div><div><span>Delivery</span><strong id="delivery-fee">$0.00</strong></div></div><div class="total"><span>Total</span><strong id="total">$20.00</strong></div><p id="summary-note" class="muted small">Ready to send.</p></aside>
+</div>
+<div id="success" class="success hidden"><div>✓</div><h2>Order sent! 🍕</h2><p id="success-text">The order is now on the live dashboard.</p><button class="primary" id="new-order" type="button">TAKE ANOTHER ORDER</button></div>
+</section></main>
+</body></html>

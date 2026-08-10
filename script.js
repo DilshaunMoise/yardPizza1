@@ -41,7 +41,8 @@ const CONFIG = {
     "Bacon",
     "Ham",
     "Bell Peppers",
-    "Sausage"
+    "Sausage",
+    "Veg"
   ],
 
   formspreeEndpoint: "https://formspree.io/f/xdenabwa",
@@ -81,7 +82,11 @@ const state = {
   submitting: false,
   trackingToken: null,
   trackingChannel: null,
-  trackingPoll: null
+  trackingPoll: null,
+  pizzaMode: "whole",
+  leftToppings: [],
+  rightToppings: [],
+  toppingAvailability: {}
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -123,11 +128,21 @@ const elements = {
   modalClose: $("#modal-close"),
   year: $("#year"),
   navToggle: $(".nav-toggle"),
-  navMenu: $("#nav-menu")
+  navMenu: $("#nav-menu"),
+  wholeBuilder: $("#whole-builder"),
+  halfBuilder: $("#half-builder"),
+  leftToppingGrid: $("#left-topping-grid"),
+  rightToppingGrid: $("#right-topping-grid")
 };
 
 function money(value) {
   return `$${Number(value).toFixed(2)}`;
+}
+
+function uniqueToppings() {
+  return [...new Set(state.pizzaMode === "whole"
+    ? state.selectedToppings
+    : [...state.leftToppings, ...state.rightToppings])];
 }
 
 function calculatePizzaUnitPrice(toppingCount) {
@@ -138,83 +153,74 @@ function calculatePizzaUnitPrice(toppingCount) {
 }
 
 function calculateOrder() {
-  const toppingCount = state.selectedToppings.length;
+  const toppingCount = uniqueToppings().length;
   const unitPrice = calculatePizzaUnitPrice(toppingCount);
   const includedToppings = Math.min(toppingCount, CONFIG.pizza.includedToppings);
   const extraToppings = Math.max(0, toppingCount - CONFIG.pizza.includedToppings);
   const extraToppingCost = extraToppings * CONFIG.pizza.extraToppingPrice;
   const pizzasSubtotal = unitPrice * state.quantity;
   const deliveryFee = state.orderType === "delivery" && state.quantity >= CONFIG.delivery.minimumBoxes
-    ? CONFIG.delivery.fee
-    : 0;
-  const total = pizzasSubtotal + deliveryFee;
+    ? CONFIG.delivery.fee : 0;
+  return { toppingCount, unitPrice, includedToppings, extraToppings, extraToppingCost,
+    pizzasSubtotal, deliveryFee, total: pizzasSubtotal + deliveryFee };
+}
 
-  return {
-    toppingCount,
-    unitPrice,
-    includedToppings,
-    extraToppings,
-    extraToppingCost,
-    pizzasSubtotal,
-    deliveryFee,
-    total
-  };
+function toppingButton(topping, selected, clickHandler) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "topping-option";
+  const available = state.toppingAvailability[topping] !== false;
+  button.disabled = !available;
+  button.classList.toggle("sold-out", !available);
+  button.setAttribute("aria-pressed", String(selected));
+  button.innerHTML = `<span class="topping-visual" aria-hidden="true">${TOPPING_ICONS[topping] || "🍕"}</span><span>${escapeHtml(topping)}</span>${available ? "" : "<small>SOLD OUT</small>"}<span class="topping-check" aria-hidden="true">✓</span>`;
+  if (selected) button.classList.add("selected");
+  if (available) button.addEventListener("click", clickHandler);
+  return button;
+}
+
+function renderToppingGrid(grid, selected, clickHandler, includeCheese = false) {
+  grid.innerHTML = "";
+  if (includeCheese) {
+    const cheese = document.createElement("button");
+    cheese.type = "button"; cheese.className = "topping-option cheese-option";
+    cheese.setAttribute("aria-pressed", String(selected.length === 0));
+    cheese.innerHTML = `<span class="topping-visual" aria-hidden="true">🧀</span><span>Cheese Pizza</span><small>12\" • ${money(CONFIG.pizza.cheesePizzaPrice)}</small><span class="topping-check" aria-hidden="true">✓</span>`;
+    if (selected.length === 0) cheese.classList.add("selected");
+    cheese.addEventListener("click", clickHandler);
+    grid.appendChild(cheese);
+  }
+  CONFIG.toppings.forEach(t => grid.appendChild(toppingButton(t, selected.includes(t), () => clickHandler(t))));
 }
 
 function renderToppings() {
-  elements.toppingGrid.innerHTML = "";
-
-  const cheese = document.createElement("button");
-  cheese.type = "button";
-  cheese.id = "cheese-pizza";
-  cheese.className = "topping-option cheese-option";
-  cheese.setAttribute("aria-pressed", String(state.selectedToppings.length === 0));
-  cheese.innerHTML = `
-    <span class="topping-visual" aria-hidden="true">🧀</span>
-    <span>Cheese Pizza</span>
-    <small>12" • ${money(CONFIG.pizza.cheesePizzaPrice)}</small>
-    <span class="topping-check" aria-hidden="true">✓</span>
-  `;
-  if (state.selectedToppings.length === 0) cheese.classList.add("selected");
-  cheese.addEventListener("click", () => {
-    state.selectedToppings = [];
-    elements.toppingsError.textContent = "";
-    renderToppings();
-    updateUI();
+  renderToppingGrid(elements.toppingGrid, state.selectedToppings, (topping) => {
+    if (typeof topping !== "string") state.selectedToppings = [];
+    else state.selectedToppings = state.selectedToppings.includes(topping)
+      ? state.selectedToppings.filter(x => x !== topping) : [...state.selectedToppings, topping];
+    elements.toppingsError.textContent = ""; renderToppings(); updateUI();
+  }, true);
+  renderToppingGrid(elements.leftToppingGrid, state.leftToppings, (topping) => {
+    if (typeof topping !== "string") state.leftToppings = [];
+    else state.leftToppings = state.leftToppings.includes(topping)
+      ? state.leftToppings.filter(x => x !== topping) : [...state.leftToppings, topping];
+    elements.toppingsError.textContent = ""; renderToppings(); updateUI();
   });
-  elements.toppingGrid.appendChild(cheese);
-
-  CONFIG.toppings.forEach((topping) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "topping-option";
-    button.setAttribute("aria-pressed", String(state.selectedToppings.includes(topping)));
-    button.innerHTML = `
-      <input type="checkbox" tabindex="-1" aria-hidden="true" ${state.selectedToppings.includes(topping) ? "checked" : ""}>
-      <span class="topping-visual" aria-hidden="true">${TOPPING_ICONS[topping] || "🍕"}</span>
-      <span>${topping}</span>
-      <span class="topping-check" aria-hidden="true">✓</span>
-    `;
-
-    if (state.selectedToppings.includes(topping)) {
-      button.classList.add("selected");
-    }
-
-    button.addEventListener("click", () => toggleTopping(topping));
-    elements.toppingGrid.appendChild(button);
+  renderToppingGrid(elements.rightToppingGrid, state.rightToppings, (topping) => {
+    if (typeof topping !== "string") state.rightToppings = [];
+    else state.rightToppings = state.rightToppings.includes(topping)
+      ? state.rightToppings.filter(x => x !== topping) : [...state.rightToppings, topping];
+    elements.toppingsError.textContent = ""; renderToppings(); updateUI();
   });
+  elements.wholeBuilder.classList.toggle("hidden", state.pizzaMode !== "whole");
+  elements.halfBuilder.classList.toggle("hidden", state.pizzaMode !== "half");
+  $$(".pizza-mode-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.mode === state.pizzaMode));
 }
 
 function toggleTopping(topping) {
-  if (state.selectedToppings.includes(topping)) {
-    state.selectedToppings = state.selectedToppings.filter((item) => item !== topping);
-  } else {
-    state.selectedToppings.push(topping);
-  }
-
-  elements.toppingsError.textContent = "";
-  renderToppings();
-  updateUI();
+  state.selectedToppings = state.selectedToppings.includes(topping)
+    ? state.selectedToppings.filter((item) => item !== topping) : [...state.selectedToppings, topping];
+  elements.toppingsError.textContent = ""; renderToppings(); updateUI();
 }
 
 function updateQuantity(nextQuantity) {
@@ -264,12 +270,12 @@ function updateUI() {
   elements.summaryToppingCount.textContent =
     `${order.toppingCount} topping${order.toppingCount === 1 ? "" : "s"}`;
 
-  if (state.selectedToppings.length === 0) {
+  if (order.toppingCount === 0) {
     elements.summaryToppingsList.innerHTML = '<span class="summary-chip">Cheese Pizza</span>';
+  } else if (state.pizzaMode === "half") {
+    elements.summaryToppingsList.innerHTML = `<span class="summary-chip">Left: ${state.leftToppings.length ? state.leftToppings.map(escapeHtml).join(", ") : "Cheese"}</span><span class="summary-chip">Right: ${state.rightToppings.length ? state.rightToppings.map(escapeHtml).join(", ") : "Cheese"}</span>`;
   } else {
-    elements.summaryToppingsList.innerHTML = state.selectedToppings
-      .map((topping) => `<span class="summary-chip">${escapeHtml(topping)}</span>`)
-      .join("");
+    elements.summaryToppingsList.innerHTML = state.selectedToppings.map(t => `<span class="summary-chip">${escapeHtml(t)}</span>`).join("");
   }
 
   elements.summaryBase.textContent = money(order.unitPrice);
@@ -343,6 +349,11 @@ function validateForm() {
     valid = false;
   }
 
+  if (state.pizzaMode === "half" && (!state.leftToppings.length || !state.rightToppings.length)) {
+    elements.toppingsError.textContent = "Choose at least one topping on each half, or switch back to Whole Pizza.";
+    valid = false;
+  }
+
   if (state.orderType === "delivery") {
     if (state.quantity < CONFIG.delivery.minimumBoxes) {
       elements.deliveryWarning.classList.add("visible");
@@ -378,7 +389,9 @@ function buildOrderDetails() {
 }
 
 function buildEmailBody(details) {
-  const toppingLines = state.selectedToppings.map((topping) => `- ${topping}`).join("\n");
+  const toppingLines = state.pizzaMode === "half"
+    ? [`Left half: ${state.leftToppings.join(", ") || "Cheese"}`, `Right half: ${state.rightToppings.join(", ") || "Cheese"}`].join("\n")
+    : state.selectedToppings.map((topping) => `- ${topping}`).join("\n");
 
   return [
     "NEW PIZZA ORDER 🍕",
@@ -437,7 +450,10 @@ async function saveOrderToSupabase(details) {
     order_type: details.orderType,
     delivery_address: details.address || null,
     pizza_size: CONFIG.pizza.size,
-    toppings: [...state.selectedToppings],
+    toppings: state.pizzaMode === "half"
+      ? { mode: "half_and_half", left: [...state.leftToppings], right: [...state.rightToppings] }
+      : [...state.selectedToppings],
+    order_source: "online",
     topping_count: details.toppingCount,
     unit_price: details.unitPrice,
     included_toppings: details.includedToppings,
@@ -480,7 +496,9 @@ async function sendFormspreeBackup(details) {
   formData.append("order_type", details.orderType);
   formData.append("delivery_address", details.address || "N/A");
   formData.append("pizza_size", CONFIG.pizza.size);
-  formData.append("toppings", state.selectedToppings.join(", "));
+  formData.append("toppings", state.pizzaMode === "half"
+    ? `Left: ${state.leftToppings.join(", ") || "Cheese"} | Right: ${state.rightToppings.join(", ") || "Cheese"}`
+    : state.selectedToppings.join(", "));
   formData.append("number_of_toppings", String(details.toppingCount));
   formData.append("base_price", money(details.unitPrice));
   formData.append("included_toppings", String(details.includedToppings));
@@ -620,6 +638,9 @@ function closeSuccessModal() {
 
 function resetOrder() {
   state.selectedToppings = [];
+  state.leftToppings = [];
+  state.rightToppings = [];
+  state.pizzaMode = "whole";
   state.quantity = 1;
   state.orderType = "pickup";
   elements.form.reset();
@@ -664,6 +685,16 @@ async function handleSubmit(event) {
   }
 }
 
+async function loadToppingAvailability() {
+  if (!window.pizzaYardSupabase) return;
+  try {
+    const { data, error } = await window.pizzaYardSupabase.from("pizza_topping_availability").select("name,available");
+    if (error || !data) return;
+    state.toppingAvailability = Object.fromEntries(data.map(row => [row.name, row.available !== false]));
+    renderToppings(); updateUI();
+  } catch (error) { console.warn("Topping availability could not be loaded:", error); }
+}
+
 function setupNavigation() {
   elements.navToggle.addEventListener("click", () => {
     const open = elements.navMenu.classList.toggle("open");
@@ -691,6 +722,8 @@ function init() {
   elements.qtyPlus.addEventListener("click", () => updateQuantity(state.quantity + 1));
   elements.orderTypeInputs.forEach((input) => input.addEventListener("change", updateOrderType));
   elements.form.addEventListener("submit", handleSubmit);
+  $$(".pizza-mode-btn").forEach(btn => btn.addEventListener("click", () => { state.pizzaMode = btn.dataset.mode; renderToppings(); updateUI(); }));
+  loadToppingAvailability();
 
   elements.anotherOrder.addEventListener("click", () => {
     closeSuccessModal();
