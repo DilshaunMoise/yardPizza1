@@ -69,22 +69,29 @@ async function submit(e){
   if(error){console.error(error); $("#submit-error").textContent="Could not send the order. Check the dashboard/Supabase connection."; return;}
   $("#success-text").textContent=`Order ${data?.order_number ? "#"+data.order_number : ""} is now on the live dashboard.`; $("#success").classList.remove("hidden"); resetForm();
 }
+function setPizzaMode(mode){
+  state.mode = mode === "half" ? "half" : "whole";
+  $$(".mode[data-mode]").forEach(x => {
+    const active = x.dataset.mode === state.mode;
+    x.classList.toggle("active", active);
+    x.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  $("#whole-builder").classList.toggle("hidden", state.mode !== "whole");
+  $("#half-builder").classList.toggle("hidden", state.mode !== "half");
+  renderToppings();
+  updateSummary();
+}
+
 function init(){
   $("#login-form").addEventListener("submit",login); $("#logout").addEventListener("click",()=>supabaseClient.auth.signOut()); $("#staff-order-form").addEventListener("submit",submit); $("#new-order").addEventListener("click",()=>$("#success").classList.add("hidden"));
   $$(".mode[data-mode]").forEach(b=>b.addEventListener("click",(event)=>{
     event.preventDefault();
-    const mode=b.dataset.mode;
-    if(mode!=="whole" && mode!=="half") return;
-    state.mode=mode;
-    $$(".mode[data-mode]").forEach(x=>x.classList.toggle("active",x===b));
-    $("#whole-builder").classList.toggle("hidden",mode!=="whole");
-    $("#half-builder").classList.toggle("hidden",mode!=="half");
-    renderToppings();
-    updateSummary();
+    event.stopPropagation();
+    setPizzaMode(b.dataset.mode);
   }));
   $$(".mode[data-type]").forEach(b=>b.addEventListener("click",()=>{state.type=b.dataset.type; $$(".mode[data-type]").forEach(x=>x.classList.toggle("active",x===b)); $("#delivery-fields").classList.toggle("hidden",state.type!=="delivery"); updateSummary();}));
   $("#qty-minus").addEventListener("click",()=>{state.quantity=Math.max(1,state.quantity-1);$("#qty").textContent=state.quantity;updateSummary();});
   $("#qty-plus").addEventListener("click",()=>{state.quantity++;$("#qty").textContent=state.quantity;updateSummary();});
-  supabaseClient.auth.getSession().then(({data:{session}})=>showApp(session)); supabaseClient.auth.onAuthStateChange((_e,s)=>showApp(s)); renderToppings(); updateSummary();
+  supabaseClient.auth.getSession().then(({data:{session}})=>showApp(session)); supabaseClient.auth.onAuthStateChange((_e,s)=>showApp(s)); setPizzaMode("whole");
 }
 init();

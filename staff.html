@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex,nofollow"><title>Pizza Yard | Staff Ordering</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="staff.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js"></script>
+<link rel="stylesheet" href="staff.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js?v=3"></script>
 </head>
 <body>
 <main class="staff-shell">
@@ -19,7 +19,7 @@
 <label>Email <span class="muted">(optional)</span><input id="customer-email" type="email" placeholder="customer@email.com"></label>
 <div class="divider"></div>
 <div class="section-head"><div><span class="eyebrow">PIZZA</span><h2>Build the 12&quot; pizza</h2></div><span class="badge">12&quot; ONLY</span></div>
-<div class="mode-toggle"><button type="button" class="mode active" data-mode="whole">Whole Pizza</button><button type="button" class="mode" data-mode="half">Half &amp; Half</button></div>
+<div class="mode-toggle"><button type="button" class="mode active" data-mode="whole" aria-pressed="true">🍕 Whole Pizza</button><button type="button" class="mode" data-mode="half" aria-pressed="false">🍕 Half &amp; Half</button></div>
 <div id="whole-builder"><div id="whole-toppings" class="topping-grid"></div><p id="whole-error" class="error"></p></div>
 <div id="half-builder" class="hidden"><div class="half-grid"><section><h3>Left half</h3><div id="left-toppings" class="topping-grid"></div></section><section><h3>Right half</h3><div id="right-toppings" class="topping-grid"></div></section></div><p class="muted small">Pricing counts unique toppings across both halves. The first two unique toppings are included.</p><p id="half-error" class="error"></p></div>
 <div class="quantity-row"><div><span class="eyebrow">QUANTITY</span><h3>How many boxes?</h3></div><div class="qty"><button type="button" id="qty-minus">−</button><output id="qty">1</output><button type="button" id="qty-plus">+</button></div></div>
