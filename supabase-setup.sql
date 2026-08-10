@@ -219,3 +219,25 @@ drop trigger if exists pizza_topping_availability_set_updated_at on public.pizza
 create trigger pizza_topping_availability_set_updated_at
 before update on public.pizza_topping_availability
 for each row execute function public.set_topping_availability_updated_at();
+
+
+-- ============================================================
+-- Customer reviews: public submissions, staff approval.
+-- Run this section once after the previous Pizza Yard SQL.
+-- ============================================================
+create table if not exists public.pizza_reviews (
+ id uuid primary key default gen_random_uuid(),
+ created_at timestamptz not null default now(),
+ display_name text not null default 'Customer',
+ rating integer not null check (rating between 1 and 5),
+ comment text not null check (char_length(trim(comment)) between 1 and 500),
+ approved boolean not null default false
+);
+create index if not exists pizza_reviews_approved_created_idx on public.pizza_reviews(approved, created_at desc);
+alter table public.pizza_reviews enable row level security;
+drop policy if exists "Anyone can view approved reviews" on public.pizza_reviews;
+create policy "Anyone can view approved reviews" on public.pizza_reviews for select to anon, authenticated using (approved=true or exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+drop policy if exists "Anyone can submit reviews" on public.pizza_reviews;
+create policy "Anyone can submit reviews" on public.pizza_reviews for insert to anon, authenticated with check (approved=false);
+drop policy if exists "Staff can moderate reviews" on public.pizza_reviews;
+create policy "Staff can moderate reviews" on public.pizza_reviews for update to authenticated using(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid()))) with check(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));

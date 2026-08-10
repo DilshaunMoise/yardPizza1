@@ -695,6 +695,8 @@ async function loadToppingAvailability() {
   } catch (error) { console.warn("Topping availability could not be loaded:", error); }
 }
 
+async function loadPublicReviews(){const el=$("#reviews-list");if(!el)return;const{data,error}=await window.pizzaYardSupabase.from("pizza_reviews").select("display_name,rating,comment,created_at").eq("approved",true).order("created_at",{ascending:false}).limit(20);if(error){el.innerHTML='<p class="muted">Reviews are coming soon.</p>';return}if(!data?.length){el.innerHTML='<p class="muted">Be the first to leave a review. ⭐</p>';return}el.innerHTML=data.map(r=>`<article class="review-card"><div class="review-card-top"><strong>${esc(r.display_name||"Customer")}</strong><span class="review-stars">${"★".repeat(Number(r.rating))}${"☆".repeat(5-Number(r.rating))}</span></div><p>${esc(r.comment)}</p></article>`).join("")}
+async function submitReview(e){e.preventDefault();const msg=$("#review-form-message");msg.textContent="";const rating=Number($("#review-rating").value),name=$("#review-name").value.trim()||"Customer",comment=$("#review-comment").value.trim();if(!comment)return msg.textContent="Please write a review.";const{error}=await window.pizzaYardSupabase.from("pizza_reviews").insert({display_name:name,rating,comment,approved:false});if(error){msg.textContent="We couldn't submit your review right now. Please try again.";return}$("#review-form").reset();$("#review-rating").value="5";msg.textContent="Thanks! Your review was submitted for approval. ⭐"}
 function setupNavigation() {
   elements.navToggle.addEventListener("click", () => {
     const open = elements.navMenu.classList.toggle("open");
@@ -732,6 +734,8 @@ function init() {
     updateUI();
   }));
   loadToppingAvailability();
+  loadPublicReviews();
+  $("#review-form")?.addEventListener("submit",submitReview);
 
   elements.anotherOrder.addEventListener("click", () => {
     closeSuccessModal();

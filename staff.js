@@ -50,48 +50,52 @@ async function loadAvailability() {
 function showApp(session) { $("#login-view").classList.toggle("hidden",!!session); $("#app-view").classList.toggle("hidden",!session); if(session) loadAvailability(); }
 async function login(e) { e.preventDefault(); const b=$("#login-button"); b.disabled=true; b.textContent="Signing in…"; const {error}=await supabaseClient.auth.signInWithPassword({email:$("#login-email").value.trim(),password:$("#login-password").value}); if(error) $("#login-error").textContent=error.message; b.disabled=false; b.textContent="Sign In"; }
 function normalizePhone(v){return String(v).replace(/[\s()-]/g,"");}
-function validPhone(v){return /^\d{7}$/.test(normalizePhone(v));}
+function validPhone(v){return !v || /^\d{7}$/.test(normalizePhone(v));}
+let customerSearchTimer=null;
+async function searchCustomers(term){
+  const box=$("#customer-suggestions"); if(!term){box.classList.add("hidden");box.innerHTML="";return;}
+  const {data,error}=await supabaseClient.from("pizza_orders").select("customer_name,customer_phone").or(`customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%`).order("created_at",{ascending:false}).limit(8);
+  if(error||!data){box.classList.add("hidden");return;}
+  const seen=new Set(); const rows=data.filter(x=>{const k=`${x.customer_name||""}|${x.customer_phone||""}`;if(seen.has(k))return false;seen.add(k);return true;});
+  box.innerHTML=rows.length?rows.map((x,i)=>`<button type="button" class="customer-suggestion" data-i="${i}"><span><strong>${esc(x.customer_name||"Walk-in Customer")}</strong><span>${esc(x.customer_phone||"No phone")}</span></span><b>USE</b></button>`).join(""):'<div class="customer-suggestion"><span>No previous customer found.</span></div>';
+  box.classList.remove("hidden");
+  $$(".customer-suggestion[data-i]").forEach((b,i)=>b.addEventListener("click",()=>{const x=rows[i];$("#customer-name").value=x.customer_name||"";$("#customer-phone").value=x.customer_phone||"";box.classList.add("hidden");$("#customer-search").value="";}));
+}
 function resetForm(){ state.mode="whole"; state.whole=[]; state.left=[]; state.right=[]; state.quantity=1; state.type="pickup"; $("#staff-order-form").reset(); $("#qty").textContent="1"; $("#delivery-fields").classList.add("hidden"); $$(".mode[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode==="whole")); $$(".mode[data-type]").forEach(b=>b.classList.toggle("active",b.dataset.type==="pickup")); $("#submit-error").textContent=""; $("#delivery-error").textContent=""; renderToppings(); updateSummary(); }
 async function submit(e){
   e.preventDefault(); $("#submit-error").textContent=""; $("#delivery-error").textContent="";
   const name=$("#customer-name").value.trim(), phone=normalizePhone($("#customer-phone").value), email=$("#customer-email").value.trim(), address=$("#address").value.trim(), instructions=$("#instructions").value.trim(), tops=selectedUnique();
-  if(!name) return $("#submit-error").textContent="Customer name is required.";
-  if(!validPhone(phone)) return $("#submit-error").textContent="Enter a valid 7-digit Saint Lucia phone number.";
+  if(phone && !validPhone(phone)) return $("#submit-error").textContent="Enter a valid 7-digit Saint Lucia phone number.";
   if(state.mode==="half" && (!state.left.length || !state.right.length)) return $("#submit-error").textContent="Choose at least one topping on each half.";
   if(state.type==="delivery" && state.quantity<3) return $("#submit-error").textContent="Delivery requires 3 boxes or more.";
   if(state.type==="delivery" && !address) return $("#delivery-error").textContent="Delivery address is required.";
   const unit=priceFor(tops.length), delivery=state.type==="delivery"?5:0, total=unit*state.quantity+delivery;
   const token=Array.from(crypto.getRandomValues(new Uint8Array(18)),b=>b.toString(16).padStart(2,"0")).join("");
-  const payload={customer_name:name,customer_phone:phone,customer_email:email||null,order_type:state.type,delivery_address:address||null,pizza_size:'12"',toppings:state.mode==="half"?{mode:"half_and_half",left:unique(state.left),right:unique(state.right)}:tops,topping_count:tops.length,unit_price:unit,included_toppings:Math.min(tops.length,2),extra_toppings:Math.max(0,tops.length-2),extra_topping_cost:Math.max(0,tops.length-2)*3,quantity:state.quantity,delivery_fee:delivery,special_instructions:instructions||null,total,status:"new",tracking_token:token,order_source:"staff"};
+  const payload={customer_name:name||"Walk-in Customer",customer_phone:phone||"",customer_email:email||null,order_type:state.type,delivery_address:address||null,pizza_size:'12"',toppings:state.mode==="half"?{mode:"half_and_half",left:unique(state.left),right:unique(state.right)}:tops,topping_count:tops.length,unit_price:unit,included_toppings:Math.min(tops.length,2),extra_toppings:Math.max(0,tops.length-2),extra_topping_cost:Math.max(0,tops.length-2)*3,quantity:state.quantity,delivery_fee:delivery,special_instructions:instructions||null,total,status:"new",tracking_token:token,order_source:"staff"};
   const b=$("#send-order"); b.disabled=true; b.textContent="SENDING…";
   const {data,error}=await supabaseClient.from("pizza_orders").insert(payload).select("order_number,id").single();
   b.disabled=false; b.textContent="SEND ORDER TO DASHBOARD →";
   if(error){console.error(error); $("#submit-error").textContent="Could not send the order. Check the dashboard/Supabase connection."; return;}
   $("#success-text").textContent=`Order ${data?.order_number ? "#"+data.order_number : ""} is now on the live dashboard.`; $("#success").classList.remove("hidden"); resetForm();
 }
-function setPizzaMode(mode){
-  state.mode = mode === "half" ? "half" : "whole";
-  $$(".mode[data-mode]").forEach(x => {
-    const active = x.dataset.mode === state.mode;
-    x.classList.toggle("active", active);
-    x.setAttribute("aria-pressed", active ? "true" : "false");
-  });
-  $("#whole-builder").classList.toggle("hidden", state.mode !== "whole");
-  $("#half-builder").classList.toggle("hidden", state.mode !== "half");
-  renderToppings();
-  updateSummary();
-}
-
 function init(){
+  $("#customer-search")?.addEventListener("input",e=>{clearTimeout(customerSearchTimer);customerSearchTimer=setTimeout(()=>searchCustomers(e.target.value.trim()),180)});
+  document.addEventListener("click",e=>{if(!e.target.closest(".customer-quick")) $("#customer-suggestions")?.classList.add("hidden")});
   $("#login-form").addEventListener("submit",login); $("#logout").addEventListener("click",()=>supabaseClient.auth.signOut()); $("#staff-order-form").addEventListener("submit",submit); $("#new-order").addEventListener("click",()=>$("#success").classList.add("hidden"));
   $$(".mode[data-mode]").forEach(b=>b.addEventListener("click",(event)=>{
     event.preventDefault();
-    event.stopPropagation();
-    setPizzaMode(b.dataset.mode);
+    const mode=b.dataset.mode;
+    if(mode!=="whole" && mode!=="half") return;
+    state.mode=mode;
+    $$(".mode[data-mode]").forEach(x=>x.classList.toggle("active",x===b));
+    $("#whole-builder").classList.toggle("hidden",mode!=="whole");
+    $("#half-builder").classList.toggle("hidden",mode!=="half");
+    renderToppings();
+    updateSummary();
   }));
   $$(".mode[data-type]").forEach(b=>b.addEventListener("click",()=>{state.type=b.dataset.type; $$(".mode[data-type]").forEach(x=>x.classList.toggle("active",x===b)); $("#delivery-fields").classList.toggle("hidden",state.type!=="delivery"); updateSummary();}));
   $("#qty-minus").addEventListener("click",()=>{state.quantity=Math.max(1,state.quantity-1);$("#qty").textContent=state.quantity;updateSummary();});
   $("#qty-plus").addEventListener("click",()=>{state.quantity++;$("#qty").textContent=state.quantity;updateSummary();});
-  supabaseClient.auth.getSession().then(({data:{session}})=>showApp(session)); supabaseClient.auth.onAuthStateChange((_e,s)=>showApp(s)); setPizzaMode("whole");
+  supabaseClient.auth.getSession().then(({data:{session}})=>showApp(session)); supabaseClient.auth.onAuthStateChange((_e,s)=>showApp(s)); renderToppings(); updateSummary();
 }
 init();
