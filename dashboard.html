@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex,nofollow"><title>Pizza Yard | Live Order Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="dashboard.js"></script>
+<link rel="stylesheet" href="dashboard.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="dashboard.js?v=20260811-v2"></script>
 </head>
 <body>
 <main class="dashboard-shell">
@@ -19,23 +19,32 @@
 <section id="dashboard-view" class="dashboard-view hidden">
 <header class="dashboard-header"><div><div class="brand"><span>🍕</span> Pizza Yard</div><h1>Live Order Dashboard</h1></div>
 <div class="header-actions"><span id="connection-status" class="connection reconnecting">● Reconnecting…</span>
-<button id="sound-toggle" class="ghost-btn" type="button" aria-pressed="true">🔔 Sound On</button>
+<button id="sound-toggle" class="ghost-btn" type="button" aria-pressed="true">🔊 LOUD SOUND ON</button><button id="test-sound" class="ghost-btn" type="button">Test Alert</button><button id="kitchen-toggle" class="ghost-btn" type="button" aria-pressed="false">🍕 KITCHEN MODE</button><button id="reports-toggle" class="ghost-btn" type="button">📊 REPORTS</button>
 <button id="logout-button" class="ghost-btn" type="button">Sign Out</button></div></header>
-<div id="new-order-alert" class="new-order-alert hidden" role="status" aria-live="assertive"><strong>🍕 NEW PIZZA ORDER</strong><span id="new-order-alert-text">A new order just arrived.</span></div>
+<div id="new-order-alert" class="new-order-alert hidden" role="status" aria-live="assertive"><strong>🍕 NEW PIZZA ORDER</strong><span id="new-order-alert-text">A new order just arrived.</span><button id="replay-order" class="alert-replay" type="button">🗣️ Replay</button></div>
 <section class="stats-grid" aria-label="Order statistics">
 <article class="stat-card"><span>New orders</span><strong id="stat-new">0</strong></article>
 <article class="stat-card"><span>Preparing</span><strong id="stat-preparing">0</strong></article>
 <article class="stat-card"><span>Ready</span><strong id="stat-ready">0</strong></article>
 <article class="stat-card"><span>Today's total orders</span><strong id="stat-today">0</strong></article>
 <article class="stat-card"><span>Today's sales</span><strong id="stat-sales">$0.00</strong></article></section>
-<section class="breakfast-dashboard-card">
-  <div class="breakfast-dashboard-head"><div><div class="eyebrow">🍳 SUNDAY BREAKFAST</div><h2>Upcoming Breakfast Pre-Orders</h2><p id="breakfast-period-label" class="header-subtitle">Loading upcoming Sunday…</p></div><span id="breakfast-count" class="breakfast-count">0 orders</span></div>
-  <div id="breakfast-orders-list" class="breakfast-orders-list"><div class="empty-state">Loading breakfast orders…</div></div>
+<section id="reports-panel" class="reports-panel hidden">
+<div class="report-card"><span class="eyebrow">TODAY</span><h2>Closing Report</h2><div id="closing-report" class="report-grid"></div></div>
+<div class="report-card"><span class="eyebrow">BUSIEST TIME</span><h2>When orders peak</h2><div id="busy-report" class="busy-bars"></div></div>
+<div class="report-card"><span class="eyebrow">TOPPINGS</span><h2>Most popular</h2><div id="topping-report" class="report-list"></div></div>
+</section>
+<section class="menu-settings">
+<div class="settings-head"><div><div class="eyebrow">MENU CONTROL</div><h2>Sold-out toppings</h2><p>Turn toppings off when you run out. Customers and staff will see the change.</p></div></div>
+<div id="availability-list" class="availability-list"><span class="muted">Loading topping availability…</span></div>
+</section>
+<section class="menu-settings reviews-admin">
+<div class="settings-head"><div><div class="eyebrow">CUSTOMER FEEDBACK</div><h2>Reviews</h2><p>Approve customer reviews before they appear publicly.</p></div></div>
+<div id="reviews-admin-list" class="reviews-admin-list"><span class="muted">Loading reviews…</span></div>
 </section>
 <section class="workspace"><div class="orders-column"><div class="toolbar">
-<div class="dashboard-search"><input id="order-search" type="search" placeholder="Search name, phone, or order number…" aria-label="Search orders"></div>
+<div class="dashboard-search"><input id="order-date" type="date" class="filter-date" aria-label="Filter by date"><input id="order-search" type="search" placeholder="Search name, phone, or order number…" aria-label="Search orders"></div>
 <div id="filters" class="filters" role="group" aria-label="Order filters">
-<button class="filter active" data-filter="active">Active</button><button class="filter" data-filter="all">All</button><button class="filter" data-filter="new">New</button><button class="filter" data-filter="preparing">Preparing</button><button class="filter" data-filter="in_oven">In Oven</button><button class="filter" data-filter="ready">Ready</button><button class="filter" data-filter="completed">Completed</button>
+<button class="filter active" data-filter="active">Active</button><button class="filter" data-filter="all">All</button><button class="filter" data-filter="new">New</button><button class="filter" data-filter="preparing">Preparing</button><button class="filter" data-filter="in_oven">In Oven</button><button class="filter" data-filter="ready">Ready</button><button class="filter" data-filter="completed">Completed</button><button class="filter" data-filter="online">Online</button><button class="filter" data-filter="staff">Staff</button>
 </div></div><div id="orders-list" class="orders-list"><div class="empty-state">Loading orders…</div></div></div>
 <aside id="details-panel" class="details-panel"><div class="details-empty"><span>🍕</span><h2>Select an order</h2><p>New orders will appear here automatically.</p></div></aside></section>
 </section></main><div id="toast" class="toast hidden" role="status"></div>
