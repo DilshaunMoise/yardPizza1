@@ -15,15 +15,15 @@ const MENU=[
  {id:'boiled_eggs',name:'Boiled Eggs',price:1.5},
  {id:'scrambled_eggs',name:'Scrambled Eggs',price:5},
  {id:'omelette',name:'Omelette',desc:'Add-ons available — list them in special instructions.',price:10},
- {id:'bakes',name:'Bakes',desc:'Choose fried or oven roasted',price:3,option:'bakes'},
+ {id:'bakes',name:'Bakes',desc:'Choose cheese or saltfish',price:3,option:'bakes'},
  {id:'saltfish_cheese',name:'Saltfish & Cheese',price:3},
  {id:'local_bread',name:'Local Bread',price:3},
- {id:'coco_tea',name:'Coco Tea',price:3},
+ {id:'coco_tea',name:'Cocoa Tea',price:3},
  {id:'coffee',name:'Coffee',price:3},
  {id:'juice',name:'Juice',price:6}
 ];
 const qty=Object.fromEntries(MENU.map(x=>[x.id,0]));
-const opts={bakes:'Fried'};
+const opts={bakes:'Cheese'};
 const money=v=>`$${Number(v||0).toFixed(2)}`;
 function nextSunday(){
   const d=new Date();
@@ -53,8 +53,8 @@ function render(){
       <h3>${x.name}</h3>
       <p>${x.desc||''}</p>
       ${x.option==='bakes'?`<div class="option">
-        <label><input type="radio" name="bakes" value="Fried" checked> Fried</label>
-        <label><input type="radio" name="bakes" value="Oven Roasted"> Oven Roasted</label>
+        <label><input type="radio" name="bakes" value="Cheese" checked> Cheese</label>
+        <label><input type="radio" name="bakes" value="Saltfish"> Saltfish</label>
       </div>`:''}
       <div class="qty">
         <button type="button" data-minus="${x.id}" aria-label="Remove one ${x.name}">−</button>
