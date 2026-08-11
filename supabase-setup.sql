@@ -241,3 +241,16 @@ drop policy if exists "Anyone can submit reviews" on public.pizza_reviews;
 create policy "Anyone can submit reviews" on public.pizza_reviews for insert to anon, authenticated with check (approved=false);
 drop policy if exists "Staff can moderate reviews" on public.pizza_reviews;
 create policy "Staff can moderate reviews" on public.pizza_reviews for update to authenticated using(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid()))) with check(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+
+
+-- ============================================================
+-- Pizza Yard v2: multi-item staff orders, payment tracking.
+-- Run this section once after the previous Pizza Yard SQL.
+-- ============================================================
+alter table public.pizza_orders add column if not exists order_items jsonb;
+alter table public.pizza_orders add column if not exists payment_status text not null default 'unpaid';
+alter table public.pizza_orders add column if not exists payment_method text;
+do $$ begin
+  alter table public.pizza_orders drop constraint if exists pizza_orders_payment_status_check;
+  alter table public.pizza_orders add constraint pizza_orders_payment_status_check check(payment_status in ('paid','unpaid','refunded'));
+exception when duplicate_object then null; end $$;
