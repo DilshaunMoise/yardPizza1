@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Pizza Yard | Sunday Breakfast Pre-Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="breakfast.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="breakfast.js"></script>
+</head>
+<body>
+<header class="top"><a href="index.html" class="brand">🍕 Pizza Yard</a><a href="index.html" class="back">← Back to Pizza</a></header>
+<main class="wrap">
+<section class="hero"><div class="eyebrow">🍳 SUNDAY BREAKFAST</div><h1>Pre-order your breakfast for Sunday.</h1><p id="period-copy">Loading breakfast date…</p><div id="cutoff-note" class="cutoff"></div></section>
+<form id="breakfast-form" novalidate>
+<section class="panel"><div class="panel-title"><span>1</span><div><h2>Choose your breakfast</h2><p>Tap + or − to choose quantities.</p></div></div><div id="menu" class="menu-grid"></div></section>
+<section class="panel"><div class="panel-title"><span>2</span><div><h2>Your details</h2><p>Name and phone number are required for Sunday breakfast.</p></div></div>
+<div class="form-grid"><label>Full name *<input id="customer-name" required autocomplete="name" placeholder="Your name"></label><label>Phone number *<input id="customer-phone" required inputmode="tel" autocomplete="tel" placeholder="Your phone number"></label></div>
+<label>Special instructions <textarea id="notes" rows="4" placeholder="Anything we should know? For omelette add-ons, please list them here."></textarea></label>
+</section>
+<section class="summary"><div><span>Sunday breakfast total</span><strong id="total">$0.00</strong></div><button id="submit" class="submit" type="submit">🍳 Submit Breakfast Pre-Order</button><p id="error" class="error" role="alert"></p></section>
+</form>
+<div id="success" class="success hidden"><div class="success-icon">✓</div><div class="eyebrow">ORDER RECEIVED</div><h2>Your Sunday breakfast is pre-ordered!</h2><p id="success-text"></p><a class="submit" href="index.html">Back to Pizza Yard</a></div>
+</main>
+</body>
+</html>

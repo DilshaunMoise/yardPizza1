@@ -1,0 +1,8 @@
+
+.breakfast-hero-cta{display:flex;align-items:center;gap:13px;margin-top:18px;padding:16px 18px;border-radius:18px;text-decoration:none;background:linear-gradient(135deg,#8b1e18,#d83a2f);color:#fff;box-shadow:0 12px 28px rgba(120,30,20,.22);border:2px solid rgba(255,255,255,.35);transition:transform .2s ease,box-shadow .2s ease}
+.breakfast-hero-cta:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(120,30,20,.28)}
+.breakfast-hero-cta:first-letter{font-size:26px}
+.breakfast-hero-cta strong{display:block;font-size:14px;letter-spacing:.02em}
+.breakfast-hero-cta small{display:block;margin-top:3px;font-size:11px;opacity:.9}
+.nav-breakfast{font-weight:900;color:#b52820!important}
+@media(max-width:760px){.breakfast-hero-cta{padding:14px}.breakfast-hero-cta strong{font-size:12px}}
