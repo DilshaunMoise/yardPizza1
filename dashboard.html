@@ -43,9 +43,31 @@
 </section>
 
 <section class="breakfast-dashboard-card" id="breakfast-dashboard">
-<div class="breakfast-dashboard-head"><div><div class="eyebrow">SUNDAY BREAKFAST</div><h2>🍳 Pre-Orders</h2><p id="breakfast-period-label" class="muted">Loading Sunday breakfast…</p></div><span id="breakfast-count" class="breakfast-count">0 orders</span></div>
-<div id="breakfast-orders-list" class="breakfast-orders-list"><div class="empty-state">Loading breakfast orders…</div></div></section>
-<section class="menu-settings" id="inventory-summary-panel"><div class="settings-head"><div><div class="eyebrow">INVENTORY</div><h2>📦 Stock Summary</h2><p>Quick view of items that need attention.</p></div><a class="ghost-btn" href="inventory.html">Open Inventory →</a></div><div id="inventory-summary-list"><span class="muted">Loading inventory…</span></div></section>
+  <div class="breakfast-dashboard-head">
+    <div>
+      <div class="eyebrow">SUNDAY BREAKFAST</div>
+      <h2>🍳 Pre-Orders</h2>
+      <p id="breakfast-period-label" class="muted">Loading Sunday breakfast…</p>
+    </div>
+    <span id="breakfast-count" class="breakfast-count">0 orders</span>
+  </div>
+  <div id="breakfast-orders-list" class="breakfast-orders-list">
+    <div class="empty-state">Loading breakfast orders…</div>
+  </div>
+</section>
+
+<section class="menu-settings" id="inventory-summary-panel">
+  <div class="settings-head">
+    <div>
+      <div class="eyebrow">INVENTORY</div>
+      <h2>📦 Stock Summary</h2>
+      <p>Quick view of items that need attention. Full inventory remains on the Inventory page.</p>
+    </div>
+    <a class="ghost-btn" href="inventory.html">Open Inventory →</a>
+  </div>
+  <div id="inventory-summary-list"><span class="muted">Loading inventory…</span></div>
+</section>
+
 <section class="workspace"><div class="orders-column"><div class="toolbar">
 <div class="dashboard-search"><input id="order-date" type="date" class="filter-date" aria-label="Filter by date"><input id="order-search" type="search" placeholder="Search name, phone, or order number…" aria-label="Search orders"></div>
 <div id="filters" class="filters" role="group" aria-label="Order filters">
@@ -53,6 +75,17 @@
 </div></div><div id="orders-list" class="orders-list"><div class="empty-state">Loading orders…</div></div></div>
 <aside id="details-panel" class="details-panel"><div class="details-empty"><span>🍕</span><h2>Select an order</h2><p>New orders will appear here automatically.</p></div></aside></section>
 </section>
-<div id="fullscreen-order-modal" class="fullscreen-order-modal hidden" role="dialog" aria-modal="true" aria-labelledby="fullscreen-order-title"><div class="fullscreen-order-inner"><div class="fullscreen-order-badge">🍕 NEW ORDER</div><h2 id="fullscreen-order-title">New Pizza Yard Order</h2><div id="fullscreen-order-content"></div><div class="fullscreen-order-actions"><button id="fullscreen-close" class="ghost-btn" type="button">Close</button><button id="fullscreen-preparing" class="primary-btn" type="button">👨‍🍳 Mark Preparing</button></div></div></div>
+<div id="fullscreen-order-modal" class="fullscreen-order-modal hidden" role="dialog" aria-modal="true" aria-labelledby="fullscreen-order-title">
+  <div class="fullscreen-order-inner">
+    <div class="fullscreen-order-badge">🍕 NEW ORDER</div>
+    <h2 id="fullscreen-order-title">New Pizza Yard Order</h2>
+    <div id="fullscreen-order-content"></div>
+    <div class="fullscreen-order-actions">
+      <button id="fullscreen-close" class="ghost-btn" type="button">Close</button>
+      <button id="fullscreen-preparing" class="primary-btn" type="button">👨‍🍳 Mark Preparing</button>
+    </div>
+  </div>
+</div>
+
 </main><div id="toast" class="toast hidden" role="status"></div>
 </body></html>
