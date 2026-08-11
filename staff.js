@@ -3,7 +3,7 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_v4Vaxfo6i2Y_E2N24xO0ag_jkprC_Rk
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const TOPPINGS = ["Corn","Pepperoni","Mushroom","Tuna","Bacon","Ham","Bell Peppers","Sausage","Veg"];
 const ICONS = { Corn:"🌽", Pepperoni:"🔴", Mushroom:"🍄", Tuna:"🐟", Bacon:"🥓", Ham:"🍖", "Bell Peppers":"🫑", Sausage:"🌭", Veg:"🥦" };
-const state = { mode:"whole", whole:[], left:[], right:[], quantity:1, type:"pickup", availability:Object.fromEntries(TOPPINGS.map(t=>[t,true])) };
+const state = { mode:"whole", whole:[], left:[], right:[], quantity:1, type:"pickup", availability:Object.fromEntries(TOPPINGS.map(t=>[t,true])), repeatOrder:null };
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const money = v => `$${Number(v || 0).toFixed(2)}`;
@@ -59,8 +59,14 @@ async function searchCustomers(term){
   const seen=new Set(); const rows=data.filter(x=>{const k=`${x.customer_name||""}|${x.customer_phone||""}`;if(seen.has(k))return false;seen.add(k);return true;});
   box.innerHTML=rows.length?rows.map((x,i)=>`<button type="button" class="customer-suggestion" data-i="${i}"><span><strong>${esc(x.customer_name||"Walk-in Customer")}</strong><span>${esc(x.customer_phone||"No phone")}</span></span><b>USE</b></button>`).join(""):'<div class="customer-suggestion"><span>No previous customer found.</span></div>';
   box.classList.remove("hidden");
-  $$(".customer-suggestion[data-i]").forEach((b,i)=>b.addEventListener("click",()=>{const x=rows[i];$("#customer-name").value=x.customer_name||"";$("#customer-phone").value=x.customer_phone||"";box.classList.add("hidden");$("#customer-search").value="";}));
+  $$(".customer-suggestion[data-i]").forEach((b,i)=>b.addEventListener("click",()=>{const x=rows[i];$("#customer-name").value=x.customer_name||"";$("#customer-phone").value=x.customer_phone||"";box.classList.add("hidden");$("#customer-search").value="";loadRepeatOrder(x.customer_phone||"");}));
 }
+async function loadRepeatOrder(phone){
+  state.repeatOrder=null; $("#repeat-last")?.classList.add("hidden"); if(!phone)return;
+  const {data,error}=await supabaseClient.from("pizza_orders").select("*").eq("customer_phone",phone).neq("status","cancelled").order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if(error||!data)return; state.repeatOrder=data; const b=$("#repeat-last"); if(b){b.textContent=`🔁 REPEAT LAST ORDER ${data.order_number?"#"+data.order_number:""}`;b.classList.remove("hidden");}
+}
+function applyRepeatOrder(){const o=state.repeatOrder;if(!o)return;state.mode=o.toppings?.mode==="half_and_half"?"half":"whole";state.whole=Array.isArray(o.toppings)?[...o.toppings]:[];state.left=o.toppings?.mode==="half_and_half"?[...(o.toppings.left||[])]:[];state.right=o.toppings?.mode==="half_and_half"?[...(o.toppings.right||[])]:[];state.quantity=Number(o.quantity||1);state.type=o.order_type||"pickup";$("#qty").textContent=state.quantity;$("#delivery-fields").classList.toggle("hidden",state.type!=="delivery");$$('.mode[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===state.mode));$$('.mode[data-type]').forEach(b=>b.classList.toggle('active',b.dataset.type===state.type));$("#whole-builder").classList.toggle("hidden",state.mode!=="whole");$("#half-builder").classList.toggle("hidden",state.mode!=="half");renderToppings();updateSummary();}
 function resetForm(){ state.mode="whole"; state.whole=[]; state.left=[]; state.right=[]; state.quantity=1; state.type="pickup"; $("#staff-order-form").reset(); $("#qty").textContent="1"; $("#delivery-fields").classList.add("hidden"); $$(".mode[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode==="whole")); $$(".mode[data-type]").forEach(b=>b.classList.toggle("active",b.dataset.type==="pickup")); $("#submit-error").textContent=""; $("#delivery-error").textContent=""; renderToppings(); updateSummary(); }
 async function submit(e){
   e.preventDefault(); $("#submit-error").textContent=""; $("#delivery-error").textContent="";
@@ -79,7 +85,7 @@ async function submit(e){
   $("#success-text").textContent=`Order ${data?.order_number ? "#"+data.order_number : ""} is now on the live dashboard.`; $("#success").classList.remove("hidden"); resetForm();
 }
 function init(){
-  $("#customer-search")?.addEventListener("input",e=>{clearTimeout(customerSearchTimer);customerSearchTimer=setTimeout(()=>searchCustomers(e.target.value.trim()),180)});
+  $("#customer-search")?.addEventListener("input",e=>{clearTimeout(customerSearchTimer);customerSearchTimer=setTimeout(()=>searchCustomers(e.target.value.trim()),180)});$("#repeat-last")?.addEventListener("click",applyRepeatOrder);$("#customer-phone")?.addEventListener("blur",()=>loadRepeatOrder(normalizePhone($("#customer-phone").value)));
   document.addEventListener("click",e=>{if(!e.target.closest(".customer-quick")) $("#customer-suggestions")?.classList.add("hidden")});
   $("#login-form").addEventListener("submit",login); $("#logout").addEventListener("click",()=>supabaseClient.auth.signOut()); $("#staff-order-form").addEventListener("submit",submit); $("#new-order").addEventListener("click",()=>$("#success").classList.add("hidden"));
   $$(".mode[data-mode]").forEach(b=>b.addEventListener("click",(event)=>{

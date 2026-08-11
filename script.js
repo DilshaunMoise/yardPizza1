@@ -735,7 +735,7 @@ function init() {
   }));
   loadToppingAvailability();
   loadPublicReviews();
-  $("#review-form")?.addEventListener("submit",submitReview);
+  $("#review-form")?.addEventListener("submit",submitReview);$("#post-order-review")?.addEventListener("click",()=>{document.querySelector("#reviews")?.scrollIntoView({behavior:"smooth"});document.querySelector("#review-comment")?.focus()});
 
   elements.anotherOrder.addEventListener("click", () => {
     closeSuccessModal();

@@ -1,63 +1,34 @@
-# Pizza Yard — Final Improved Build
+# Pizza Yard — All Improvements Build
 
-This build keeps the working Supabase customer-order flow and adds:
+Keeps the existing Pizza Yard customer ordering flow and adds the requested small-business workflow improvements.
 
+## Included
 - 12-inch pizzas only
-- Explicit Cheese Pizza option
-- Existing 8 toppings
-- Live order summary and pricing
-- Pickup/delivery validation
-- Supabase order saving
-- Formspree backup notification
-- Staff dashboard search
-- Staff sales statistic
-- Staff status workflow: New → Preparing → In Oven → Ready → Completed
-- Staff print-order button
-- Customer live order progress tracker
-- Secure customer tracking token + Supabase RPC
-- Mobile-friendly progress tracker
+- Whole Pizza and Half & Half
+- Veg topping
+- Large touch-friendly staff ordering controls
+- Optional staff customer name and phone
+- Previous-customer lookup
+- Repeat last order for returning customers
+- Live dashboard with loud alert and text-to-speech order announcements
+- Order timers showing elapsed time
+- Kitchen Display Mode for a simplified kitchen view
+- Ready-status voice announcement; customer tracker updates to Ready
+- Daily closing report: orders, sales, average order, online/staff, pickup/delivery
+- Busiest-time report
+- Most-popular-toppings report
+- Customer reviews on the main ordering page
+- Staff review approval/hide controls
+- Post-order review prompt
+- Sold-out topping controls
+- Existing customer tracking and order status workflow
 
-## Important deployment order
+## Not included by request
+- SMS notifications
+- Additional security system previously discussed as #10
+- Rewards/loyalty program
+- Daily specials
+- Pizza photos (to be added when real Pizza Yard photos are provided)
 
-1. Upload these files to the same GitHub Pages repository:
-   - index.html
-   - script.js
-   - style.css
-   - dashboard.html
-   - dashboard.js
-   - dashboard.css
-   - supabase-setup.sql
-2. In the existing Supabase project, run `supabase-setup.sql` once.
-3. Do not create a new Supabase project.
-4. Do not put a Supabase secret/service-role key in the website.
-5. Place one test order.
-6. Confirm it appears in Supabase.
-7. Sign into `/dashboard.html` and change its status to test the workflow.
-8. The customer confirmation tracker polls the secure status function and updates as staff changes status.
-
-The current pizza entry price is preserved at $20; Cheese Pizza uses that same existing entry price so no new price was invented.
-
-
-## New upgrades in this build
-- 12-inch pizzas only
-- New Veg topping
-- Whole or Half & Half topping selection on customer and staff ordering
-- Half-and-half toppings stored clearly as left/right sides
-- Staff tablet ordering at `staff.html`
-- Staff orders and online orders share the same live dashboard
-- Sequential order numbers when the Supabase upgrade is run
-- Louder repeated new-order alert with tablet vibration where supported
-- Today's sales total and online/staff source filters
-- Customer order history in the dashboard
-- Staff-controlled sold-out topping availability
-- Existing customer live status tracker remains in place
-- Existing Formspree backup remains for online orders
-
-### Deployment
-1. Upload all site files, including `staff.html`, `staff.js`, and `staff.css`.
-2. Run the updated `supabase-setup.sql` in the existing Supabase project.
-3. Test one online order and one staff order.
-4. Open `staff.html` on the store tablet and sign in with the existing staff Auth account.
-5. Use the Dashboard menu controls to mark toppings sold out when needed.
-
-SMS notifications and additional security changes are intentionally not included in this build, per the requested scope.
+## Database
+The existing Pizza Yard Supabase setup remains in place. The Reviews table was already created separately by running the Reviews SQL section. No additional SQL is required for these new dashboard/report/repeat-order features because they use existing order data.

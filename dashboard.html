@@ -19,15 +19,20 @@
 <section id="dashboard-view" class="dashboard-view hidden">
 <header class="dashboard-header"><div><div class="brand"><span>🍕</span> Pizza Yard</div><h1>Live Order Dashboard</h1></div>
 <div class="header-actions"><span id="connection-status" class="connection reconnecting">● Reconnecting…</span>
-<button id="sound-toggle" class="ghost-btn" type="button" aria-pressed="true">🔊 LOUD SOUND ON</button><button id="test-sound" class="ghost-btn" type="button">Test Alert</button>
+<button id="sound-toggle" class="ghost-btn" type="button" aria-pressed="true">🔊 LOUD SOUND ON</button><button id="test-sound" class="ghost-btn" type="button">Test Alert</button><button id="kitchen-toggle" class="ghost-btn" type="button" aria-pressed="false">🍕 KITCHEN MODE</button><button id="reports-toggle" class="ghost-btn" type="button">📊 REPORTS</button>
 <button id="logout-button" class="ghost-btn" type="button">Sign Out</button></div></header>
-<div id="new-order-alert" class="new-order-alert hidden" role="status" aria-live="assertive"><strong>🍕 NEW PIZZA ORDER</strong><span id="new-order-alert-text">A new order just arrived.</span></div>
+<div id="new-order-alert" class="new-order-alert hidden" role="status" aria-live="assertive"><strong>🍕 NEW PIZZA ORDER</strong><span id="new-order-alert-text">A new order just arrived.</span><button id="replay-order" class="alert-replay" type="button">🗣️ Replay</button></div>
 <section class="stats-grid" aria-label="Order statistics">
 <article class="stat-card"><span>New orders</span><strong id="stat-new">0</strong></article>
 <article class="stat-card"><span>Preparing</span><strong id="stat-preparing">0</strong></article>
 <article class="stat-card"><span>Ready</span><strong id="stat-ready">0</strong></article>
 <article class="stat-card"><span>Today's total orders</span><strong id="stat-today">0</strong></article>
 <article class="stat-card"><span>Today's sales</span><strong id="stat-sales">$0.00</strong></article></section>
+<section id="reports-panel" class="reports-panel hidden">
+<div class="report-card"><span class="eyebrow">TODAY</span><h2>Closing Report</h2><div id="closing-report" class="report-grid"></div></div>
+<div class="report-card"><span class="eyebrow">BUSIEST TIME</span><h2>When orders peak</h2><div id="busy-report" class="busy-bars"></div></div>
+<div class="report-card"><span class="eyebrow">TOPPINGS</span><h2>Most popular</h2><div id="topping-report" class="report-list"></div></div>
+</section>
 <section class="menu-settings">
 <div class="settings-head"><div><div class="eyebrow">MENU CONTROL</div><h2>Sold-out toppings</h2><p>Turn toppings off when you run out. Customers and staff will see the change.</p></div></div>
 <div id="availability-list" class="availability-list"><span class="muted">Loading topping availability…</span></div>
