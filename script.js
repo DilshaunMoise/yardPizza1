@@ -83,6 +83,8 @@ const state = {
   trackingToken: null,
   trackingChannel: null,
   trackingPoll: null,
+  trackingStatus: null,
+  notificationHintTimer: null,
   pizzaMode: "whole",
   leftToppings: [],
   rightToppings: [],
@@ -594,6 +596,90 @@ function renderTracker(status, customerName = "") {
   `;
 }
 
+function notificationTitleForStatus(status) {
+  const map = {
+    new: "🍕 Pizza Yard — Order Received",
+    preparing: "👨‍🍳 Pizza Yard — Preparing",
+    in_oven: "🔥 Pizza Yard — In the Oven",
+    ready: "✅ Pizza Yard — Ready",
+    completed: "🎉 Pizza Yard — Completed",
+    cancelled: "⚠️ Pizza Yard — Order Cancelled"
+  };
+  return map[status] || "Pizza Yard Order Update";
+}
+
+function notificationBodyForStatus(status) {
+  const map = {
+    new: "We've received your order.",
+    preparing: "Your kitchen is preparing your pizza now.",
+    in_oven: "Your pizza is in the oven and cooking now.",
+    ready: "Your pizza is ready for pickup or delivery.",
+    completed: "Your Pizza Yard order is completed. Enjoy!",
+    cancelled: "Your Pizza Yard order was cancelled. Please contact us if you need help."
+  };
+  return map[status] || "Your Pizza Yard order has been updated.";
+}
+
+async function enableOrderNotifications() {
+  if (!("Notification" in window)) {
+    showNotificationHint("This browser does not support notifications.");
+    return false;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    localStorage.setItem("pizzaYardNotifications", permission === "granted" ? "on" : "off");
+    if (permission === "granted") {
+      showNotificationHint("Order notifications are on.");
+      if (state.trackingStatus) {
+        new Notification(notificationTitleForStatus(state.trackingStatus), {
+          body: "We'll notify you when your order progresses.",
+          tag: "pizza-yard-notifications-enabled"
+        });
+      }
+      return true;
+    }
+    showNotificationHint("Notifications are blocked. You can enable them in your browser settings.");
+  } catch (error) {
+    console.warn("Notification permission request failed:", error);
+  }
+  return false;
+}
+
+function showNotificationHint(message) {
+  let el = document.getElementById("notification-hint");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove("hidden");
+  clearTimeout(state.notificationHintTimer);
+  state.notificationHintTimer = setTimeout(() => el.classList.add("hidden"), 4500);
+}
+
+function notifyOrderStatusChanged(order) {
+  const status = order.status;
+  if (!status || status === state.trackingStatus) return;
+  const wasInitialized = state.trackingStatus !== null;
+  state.trackingStatus = status;
+  localStorage.setItem("pizzaYardLastTrackingStatus", status);
+
+  if (!wasInitialized) return;
+
+  const title = notificationTitleForStatus(status);
+  const body = notificationBodyForStatus(status);
+  showNotificationHint(body);
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification(title, { body, tag: `pizza-yard-order-${state.trackingToken || "current"}` });
+    } catch (error) {
+      console.warn("Browser notification failed:", error);
+    }
+  }
+
+  if (navigator.vibrate) {
+    try { navigator.vibrate([180, 100, 180]); } catch (_) {}
+  }
+}
+
 async function fetchTrackedOrder() {
   if (!state.trackingToken || !window.pizzaYardSupabase) return;
   const { data, error } = await window.pizzaYardSupabase
@@ -601,12 +687,14 @@ async function fetchTrackedOrder() {
 
   if (!error && data && data.length) {
     const order = data[0];
+    notifyOrderStatusChanged(order);
     renderTracker(order.status, order.customer_name);
   }
 }
 
 function startOrderTracking() {
   if (!state.trackingToken || !window.pizzaYardSupabase) return;
+  state.trackingStatus = null;
   renderTracker("new");
   fetchTrackedOrder();
   clearInterval(state.trackingPoll);
@@ -616,6 +704,7 @@ function startOrderTracking() {
 function stopOrderTracking() {
   clearInterval(state.trackingPoll);
   state.trackingPoll = null;
+  state.trackingStatus = null;
 }
 
 function openSuccessModal(total) {

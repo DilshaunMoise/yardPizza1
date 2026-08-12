@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="script.js"></script>
-<link rel="stylesheet" href="breakfast-banner.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -33,7 +32,7 @@
         <a href="#builder">Build Your Pizza</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#reviews">Reviews ⭐</a><a href="#contact">Contact</a>
-        <a class="nav-order" href="#builder">Order Now</a><a class="nav-breakfast" href="breakfast.html">🍳 Sunday Breakfast</a>
+        <a class="nav-order" href="#builder">Order Now</a>
       </div>
     </nav>
   </header>
@@ -51,8 +50,6 @@
             <a class="btn btn-primary" href="#builder">Order Now <span aria-hidden="true">→</span></a>
             <a class="btn btn-secondary" href="tel:7121777">Call 7121777</a>
           </div>
-          <a class="breakfast-hero-cta" href="breakfast.html">🍳 <span><strong>SUNDAY BREAKFAST — PRE-ORDER NOW</strong><small>Order during the week for Sunday • See breakfast menu →</small></span></a>
-
           <div class="hero-meta">
             <span>📍 Ti Rocher, Castries</span>
             <span>🚚 Delivery from 3 boxes</span>
@@ -369,9 +366,27 @@
         <strong id="success-total">$0.00</strong>
       </div>
       <div class="tracking-code-wrap">Tracking code <strong id="tracking-code">--------</strong></div>
-      <div id="order-tracker" class="order-tracker" aria-live="polite"></div><div class="post-order-feedback"><p class="eyebrow">QUICK FEEDBACK</p><h3>How was your Pizza Yard order?</h3><button type="button" class="btn btn-primary" id="post-order-review">⭐ Leave a Review</button></div>
+      <div id="order-tracker" class="order-tracker" aria-live="polite"></div>
+      <div class="order-notification-controls">
+        <button type="button" class="btn btn-secondary notification-btn" id="enable-order-notifications">🔔 Turn On Order Notifications</button>
+        <p class="notification-note">Get an alert when your order moves to Preparing, In the Oven, Ready, or Completed.</p>
+        <p id="notification-hint" class="notification-hint hidden" role="status"></p>
+      </div><div class="post-order-feedback"><p class="eyebrow">QUICK FEEDBACK</p><h3>How was your Pizza Yard order?</h3><button type="button" class="btn btn-primary" id="post-order-review">⭐ Leave a Review</button></div>
       <button class="btn btn-primary" type="button" id="another-order">Place Another Order</button>
     </div>
   </div>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const btn=document.getElementById('enable-order-notifications');
+  if(!btn)return;
+  const supported='Notification' in window;
+  if(!supported){btn.textContent='🔔 Notifications Not Supported';btn.disabled=true;return;}
+  if(Notification.permission==='granted')btn.textContent='🔔 Order Notifications On';
+  btn.addEventListener('click', async()=>{
+    const ok=await enableOrderNotifications();
+    if(ok)btn.textContent='🔔 Order Notifications On';
+  });
+});
+</script>
 </body>
 </html>
