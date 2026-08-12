@@ -749,3 +749,10 @@ button { cursor: pointer; }
 .pizza-cart-item strong{display:block;font-size:13px}.pizza-cart-item small{display:block;margin-top:3px;color:var(--muted);font-weight:700}
 .cart-remove{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:8px 10px;font-weight:800;cursor:pointer}
 @media(max-width:600px){.multi-pizza-heading{flex-direction:column}.pizza-cart-item{align-items:flex-start;flex-direction:column}.cart-remove{width:100%}}
+
+/* Pizza Yard Rewards */
+.rewards-section{background:var(--cream)}
+.rewards-card{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center;padding:30px;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:var(--shadow)}
+.rewards-copy h3{margin:10px 0 8px;font-size:28px}.rewards-copy p{margin:8px 0}.rewards-badge{display:inline-flex;padding:7px 11px;border-radius:999px;background:#fff2d9;font-size:11px;font-weight:900;letter-spacing:.08em}
+.rewards-form{display:grid;gap:12px}.rewards-form label{display:grid;gap:6px;font-weight:800;font-size:13px}.rewards-form input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font:inherit}.rewards-result{grid-column:1/-1;padding:20px;border-radius:18px;background:#fff8ea;border:1px solid #f0dfbd}.rewards-points{font-size:38px;font-weight:900}.rewards-progress{height:10px;background:#eee5dc;border-radius:99px;overflow:hidden;margin:10px 0}.rewards-progress span{display:block;height:100%;background:var(--red);border-radius:inherit}.rewards-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.rewards-actions button{border:1px solid var(--line);background:#fff;padding:10px 13px;border-radius:10px;font-weight:900;cursor:pointer}.rewards-optin-label{display:flex!important;align-items:center;gap:9px!important;cursor:pointer}.rewards-optin-label input{width:auto}
+@media(max-width:760px){.rewards-card{grid-template-columns:1fr;padding:22px}}

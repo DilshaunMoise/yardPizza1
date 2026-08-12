@@ -108,6 +108,7 @@ async function submitBreakfastOrder(name,phone,notes,selected,total){
     status:'new'
   }).select('id').single();
   if(error)throw error;
+  if(document.querySelector('#join-rewards')?.checked){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
   return data;
 }
 

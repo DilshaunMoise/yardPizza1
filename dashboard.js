@@ -80,3 +80,15 @@ showNewOrderAlert=function(o){oldShowNewOrderAlert(o);setTimeout(()=>openFullscr
 const oldShowDashboard=showDashboard;
 showDashboard=function(session){oldShowDashboard(session);if(session){loadBreakfastOrders();subscribeToBreakfast();loadInventorySummary()}else if(breakfastState.channel&&supabaseClient){supabaseClient.removeChannel(breakfastState.channel);breakfastState.channel=null}};
 document.addEventListener('DOMContentLoaded',()=>{document.querySelector('#fullscreen-close')?.addEventListener('click',closeFullscreenOrder);document.querySelector('#fullscreen-preparing')?.addEventListener('click',async()=>{const o=state.orders.find(x=>x.id===state.selectedId)||state.orders.find(x=>x.id===state.lastAnnouncedId);if(o){closeFullscreenOrder();await updateStatus(o.id,'preparing')}});setInterval(()=>{if(supabaseClient&&document.visibilityState==='visible'){loadBreakfastOrders();loadInventorySummary()}},15000)});
+
+// Pizza Yard Rewards verification
+async function verifyRewardCode(e){
+  e.preventDefault();
+  const input=document.querySelector('#reward-code-input'), msg=document.querySelector('#reward-verify-message');
+  if(!input||!msg||!window.pizzaYardSupabase)return;
+  msg.className='reward-verify-message'; msg.textContent='Verifying…';
+  const {data,error}=await window.pizzaYardSupabase.rpc('verify_reward_code',{p_code:input.value.trim()});
+  if(error||!data?.length){msg.classList.add('error');msg.textContent=error?.message||'Reward code is invalid or already used.';return;}
+  const r=data[0]; msg.classList.add('success'); msg.textContent=`✅ ${r.reward_label} redeemed for ${r.customer_name} (${r.customer_phone}). Code ${r.code} is now used.`; input.value='';
+}
+document.addEventListener('DOMContentLoaded',()=>document.querySelector('#reward-verify-form')?.addEventListener('submit',verifyRewardCode));

@@ -32,7 +32,7 @@
         <a href="#menu">Menu</a>
         <a href="#builder">Build Your Pizza</a>
         <a href="#how-it-works">How It Works</a>
-        <a href="#reviews">Reviews ⭐</a><a href="#contact">Contact</a>
+        <a href="#rewards">Rewards ⭐</a><a href="#reviews">Reviews ⭐</a><a href="#contact">Contact</a>
         <a class="nav-order" href="#builder">Order Now</a><a class="nav-breakfast" href="breakfast.html">🍳 Sunday Breakfast</a>
       </div>
     </nav>
@@ -247,6 +247,9 @@
                   <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
                   <p class="field-error" id="email-error" role="alert"></p>
                 </div>
+                <div class="field full-width rewards-optin">
+                  <label class="rewards-optin-label"><input id="join-rewards" type="checkbox"> <span>⭐ Join Pizza Yard Rewards — earn points on this order</span></label>
+                </div>
                 <div class="field full-width">
                   <label for="instructions">Additional Instructions <em>Optional</em></label>
                   <textarea id="instructions" name="instructions" rows="3" placeholder="Anything else we should know?"></textarea>
@@ -339,7 +342,23 @@
       </div>
     </section>
 
-    <section class="section reviews-section" id="reviews">
+    <section class="section rewards-section" id="rewards">
+  <div class="container">
+    <div class="section-heading"><p class="eyebrow">PIZZA YARD REWARDS</p><h2>Every order gets you <span>closer to free pizza.</span></h2><p>Earn 1 point for every $1 on completed pizza or breakfast orders.</p></div>
+    <div class="rewards-card">
+      <div class="rewards-copy"><div class="rewards-badge">🍕 REWARDS</div><h3>Join free. Keep earning.</h3><p>100 points = $5 OFF • 200 points = $10 OFF • 300 points = FREE 12&quot; PIZZA</p><p class="muted">Points are added automatically when your order is completed.</p></div>
+      <form id="rewards-form" class="rewards-form">
+        <label>Your name<input id="rewards-name" type="text" autocomplete="name" placeholder="Full name" required></label>
+        <label>Phone number<input id="rewards-phone" type="tel" inputmode="tel" placeholder="7121777" required></label>
+        <button class="btn btn-primary" type="submit">⭐ CHECK MY REWARDS</button>
+        <p id="rewards-message" class="field-error" role="alert"></p>
+      </form>
+      <div id="rewards-result" class="rewards-result hidden" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section reviews-section" id="reviews">
 <div class="container"><div class="section-heading"><p class="eyebrow">CUSTOMER REVIEWS</p><h2>What customers <span>say.</span></h2><p>Love your Pizza Yard order? Leave us a quick review.</p></div>
 <div class="reviews-layout"><div class="review-form-card"><form id="review-form"><label>Rating <span>*</span><select id="review-rating" required><option value="5">★★★★★ — 5 stars</option><option value="4">★★★★☆ — 4 stars</option><option value="3">★★★☆☆ — 3 stars</option><option value="2">★★☆☆☆ — 2 stars</option><option value="1">★☆☆☆☆ — 1 star</option></select></label><label>Your name <em>Optional</em><input id="review-name" maxlength="60" placeholder="Your name"></label><label>Your review <span>*</span><textarea id="review-comment" rows="5" maxlength="500" required placeholder="Tell us what you thought about your pizza..."></textarea></label><button class="btn btn-primary" type="submit">Submit Review →</button><p id="review-form-message" class="field-error" role="alert"></p></form></div><div><div id="reviews-list" class="reviews-list"><p class="muted">Loading reviews…</p></div></div></div></div>
 </section>

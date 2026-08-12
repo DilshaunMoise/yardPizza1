@@ -428,3 +428,159 @@ values
   ('Gloves','Cleaning & Store',0,'boxes',false)
 on conflict do nothing;
 
+
+-- ============================================================
+-- Pizza Yard Rewards
+-- 1 point per $1 completed order. Rewards are redeemed with a
+-- one-time code that staff can verify in the dashboard.
+-- ============================================================
+create table if not exists public.rewards_members (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  customer_name text not null,
+  customer_phone text not null unique,
+  customer_email text,
+  points integer not null default 0 check(points >= 0)
+);
+
+create table if not exists public.rewards_ledger (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  member_id uuid not null references public.rewards_members(id) on delete cascade,
+  points integer not null,
+  source_type text not null check(source_type in ('pizza_order','breakfast_order','adjustment','redemption')),
+  source_id uuid,
+  note text,
+  unique(source_type, source_id)
+);
+
+create table if not exists public.rewards_redemptions (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  member_id uuid not null references public.rewards_members(id) on delete cascade,
+  reward_key text not null check(reward_key in ('five_off','ten_off','free_pizza')),
+  points_cost integer not null check(points_cost > 0),
+  code text not null unique,
+  redeemed_at timestamptz,
+  verified_by uuid references auth.users(id) on delete set null
+);
+
+create index if not exists rewards_members_phone_idx on public.rewards_members(customer_phone);
+create index if not exists rewards_ledger_member_idx on public.rewards_ledger(member_id, created_at desc);
+create index if not exists rewards_redemptions_code_idx on public.rewards_redemptions(code);
+
+alter table public.rewards_members enable row level security;
+alter table public.rewards_ledger enable row level security;
+alter table public.rewards_redemptions enable row level security;
+
+-- No direct public table access. Customers use the safe RPCs below.
+drop policy if exists "Staff can view rewards members" on public.rewards_members;
+create policy "Staff can view rewards members" on public.rewards_members for select to authenticated
+using (exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+drop policy if exists "Staff can view rewards ledger" on public.rewards_ledger;
+create policy "Staff can view rewards ledger" on public.rewards_ledger for select to authenticated
+using (exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+drop policy if exists "Staff can view rewards redemptions" on public.rewards_redemptions;
+create policy "Staff can view rewards redemptions" on public.rewards_redemptions for select to authenticated
+using (exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+
+create or replace function public.ensure_rewards_member(p_name text, p_phone text, p_email text default null)
+returns table(points integer)
+language plpgsql security definer set search_path=public as $$
+declare m_id uuid;
+begin
+  if length(trim(coalesce(p_name,''))) < 1 or length(regexp_replace(coalesce(p_phone,''),'[^0-9]','','g')) <> 7 then
+    raise exception 'Invalid rewards customer details';
+  end if;
+  insert into public.rewards_members(customer_name,customer_phone,customer_email)
+  values(trim(p_name),regexp_replace(p_phone,'[^0-9]','','g'),nullif(trim(coalesce(p_email,'')),''))
+  on conflict(customer_phone) do update set customer_name=excluded.customer_name,
+    customer_email=coalesce(excluded.customer_email,rewards_members.customer_email),updated_at=now()
+  returning id into m_id;
+  return query select rm.points from public.rewards_members rm where rm.id=m_id;
+end $$;
+
+create or replace function public.get_rewards_summary(p_name text, p_phone text)
+returns table(customer_name text, points integer, next_reward_points integer, next_reward_label text, available_reward text)
+language sql security definer set search_path=public as $$
+  with m as (
+    select * from public.rewards_members
+    where lower(trim(customer_name))=lower(trim(p_name))
+      and customer_phone=regexp_replace(p_phone,'[^0-9]','','g')
+    limit 1
+  )
+  select m.customer_name, m.points,
+    case when m.points < 100 then 100 when m.points < 200 then 200 when m.points < 300 then 300 else 0 end,
+    case when m.points < 100 then '$5 OFF' when m.points < 200 then '$10 OFF' when m.points < 300 then 'FREE 12" PIZZA' else 'You have earned all current rewards' end,
+    case when m.points >= 300 then 'FREE 12" PIZZA' when m.points >= 200 then '$10 OFF' when m.points >= 100 then '$5 OFF' else 'Keep earning points' end
+  from m;
+$$;
+
+create or replace function public.redeem_rewards(p_name text, p_phone text, p_reward_key text)
+returns table(code text, reward_label text, points_remaining integer)
+language plpgsql security definer set search_path=public as $$
+declare m public.rewards_members; cost integer; label text; new_code text;
+begin
+  select * into m from public.rewards_members where lower(trim(customer_name))=lower(trim(p_name)) and customer_phone=regexp_replace(p_phone,'[^0-9]','','g') for update;
+  if not found then raise exception 'Rewards account not found'; end if;
+  if p_reward_key='five_off' then cost:=100; label:='$5 OFF';
+  elsif p_reward_key='ten_off' then cost:=200; label:='$10 OFF';
+  elsif p_reward_key='free_pizza' then cost:=300; label:='FREE 12" PIZZA';
+  else raise exception 'Invalid reward'; end if;
+  if m.points < cost then raise exception 'Not enough points'; end if;
+  new_code := 'PY-' || upper(substr(encode(gen_random_bytes(6),'hex'),1,10));
+  update public.rewards_members set points=points-cost, updated_at=now() where id=m.id;
+  insert into public.rewards_ledger(member_id,points,source_type,source_id,note) values(m.id,-cost,'redemption',gen_random_uuid(),label);
+  insert into public.rewards_redemptions(member_id,reward_key,points_cost,code) values(m.id,p_reward_key,cost,new_code);
+  return query select new_code,label,m.points-cost;
+end $$;
+
+create or replace function public.verify_reward_code(p_code text)
+returns table(reward_label text, customer_name text, customer_phone text, code text)
+language plpgsql security definer set search_path=public as $$
+declare r record;
+begin
+  if not exists(select 1 from public.staff_users where user_id=(select auth.uid())) then raise exception 'Staff only'; end if;
+  select rr.code, rr.reward_key, rm.customer_name, rm.customer_phone into r
+  from public.rewards_redemptions rr join public.rewards_members rm on rm.id=rr.member_id
+  where upper(rr.code)=upper(trim(p_code)) and rr.redeemed_at is null limit 1;
+  if not found then raise exception 'Reward code is invalid or already used'; end if;
+  update public.rewards_redemptions set redeemed_at=now(), verified_by=(select auth.uid()) where code=r.code;
+  return query select case r.reward_key when 'five_off' then '$5 OFF' when 'ten_off' then '$10 OFF' else 'FREE 12" PIZZA' end,
+    r.customer_name,r.customer_phone,r.code;
+end $$;
+
+revoke all on function public.ensure_rewards_member(text,text,text) from public;
+grant execute on function public.ensure_rewards_member(text,text,text) to anon,authenticated;
+revoke all on function public.get_rewards_summary(text,text) from public;
+grant execute on function public.get_rewards_summary(text,text) to anon,authenticated;
+revoke all on function public.redeem_rewards(text,text,text) from public;
+grant execute on function public.redeem_rewards(text,text,text) to anon,authenticated;
+revoke all on function public.verify_reward_code(text) from public;
+grant execute on function public.verify_reward_code(text) to authenticated;
+
+create or replace function public.award_rewards_for_completed_order()
+returns trigger language plpgsql security definer set search_path=public as $$
+declare m_id uuid; pts integer;
+begin
+  if new.status='completed' and coalesce(old.status,'') <> 'completed' and new.customer_phone is not null then
+    pts:=floor(greatest(coalesce(new.total,0),0));
+    if pts > 0 then
+      insert into public.rewards_members(customer_name,customer_phone,customer_email)
+      values(coalesce(nullif(trim(new.customer_name),''),'Customer'),regexp_replace(new.customer_phone,'[^0-9]','','g'),new.customer_email)
+      on conflict(customer_phone) do update set customer_name=excluded.customer_name,customer_email=coalesce(excluded.customer_email,rewards_members.customer_email),updated_at=now()
+      returning id into m_id;
+      insert into public.rewards_ledger(member_id,points,source_type,source_id,note)
+      values(m_id,pts,case when TG_TABLE_NAME='pizza_orders' then 'pizza_order' else 'breakfast_order' end,new.id,'Completed order')
+      on conflict(source_type,source_id) do nothing;
+      if found then update public.rewards_members set points=points+pts,updated_at=now() where id=m_id; end if;
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists pizza_rewards_completed on public.pizza_orders;
+create trigger pizza_rewards_completed after insert or update of status on public.pizza_orders for each row execute function public.award_rewards_for_completed_order();
+drop trigger if exists breakfast_rewards_completed on public.breakfast_orders;
+create trigger breakfast_rewards_completed after insert or update of status on public.breakfast_orders for each row execute function public.award_rewards_for_completed_order();

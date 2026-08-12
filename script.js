@@ -727,3 +727,46 @@ function init() {
 }
 
 init();
+
+// ============================================================
+// Pizza Yard Rewards
+// ============================================================
+async function ensureRewardsMemberFromOrder() {
+  const join = document.querySelector('#join-rewards');
+  if (!join?.checked || !window.pizzaYardSupabase) return;
+  try {
+    await window.pizzaYardSupabase.rpc('ensure_rewards_member', {
+      p_name: elements.name.value.trim(), p_phone: normalizeSaintLuciaPhone(elements.phone.value), p_email: elements.email.value.trim()
+    });
+  } catch (error) { console.warn('Rewards signup could not be saved:', error); }
+}
+
+async function checkRewards(e) {
+  e.preventDefault();
+  const msg = $('#rewards-message'), result = $('#rewards-result');
+  msg.textContent = ''; result.classList.add('hidden');
+  const name = $('#rewards-name').value.trim(), phone = normalizeSaintLuciaPhone($('#rewards-phone').value);
+  if (!name || !isValidPhone(phone)) { msg.textContent = 'Enter your name and a valid 7-digit Saint Lucia phone number.'; return; }
+  if (!window.pizzaYardSupabase) { msg.textContent = 'Rewards are temporarily unavailable.'; return; }
+  const { data, error } = await window.pizzaYardSupabase.rpc('get_rewards_summary', { p_name:name, p_phone:phone });
+  if (error || !data?.length) { msg.textContent = 'We could not find a rewards account yet. Join Rewards when placing your next order, then check again after it is completed.'; return; }
+  const r=data[0], points=Number(r.points||0), next=Number(r.next_reward_points||0), pct=next?Math.min(100,Math.round((points/next)*100)):100;
+  result.innerHTML = `<div class="rewards-points">${points} points</div><strong>${escapeHtml(r.available_reward||'Keep earning points')}</strong>${next?`<div class="rewards-progress"><span style="width:${pct}%"></span></div><p>${Math.max(0,next-points)} more points to ${escapeHtml(r.next_reward_label)}</p>`:'<p>🎉 You have reached every current reward level.</p>'}<div class="rewards-actions"><button type="button" data-reward="five_off" ${points<100?'disabled':''}>Redeem $5 OFF</button><button type="button" data-reward="ten_off" ${points<200?'disabled':''}>Redeem $10 OFF</button><button type="button" data-reward="free_pizza" ${points<300?'disabled':''}>Redeem Free Pizza</button></div><small class="muted">Redeemed rewards give you a one-time code to show Pizza Yard staff.</small>`;
+  result.classList.remove('hidden');
+  result.querySelectorAll('[data-reward]').forEach(btn=>btn.addEventListener('click',()=>redeemReward(name,phone,btn.dataset.reward,btn,result)));
+}
+async function redeemReward(name,phone,key,btn,result){
+  btn.disabled=true;
+  const {data,error}=await window.pizzaYardSupabase.rpc('redeem_rewards',{p_name:name,p_phone:phone,p_reward_key:key});
+  if(error||!data?.length){ alert(error?.message||'Unable to redeem this reward.'); btn.disabled=false; return; }
+  const r=data[0]; result.insertAdjacentHTML('afterbegin',`<div class="reward-code"><strong>🎁 ${escapeHtml(r.reward_label)}</strong><div style="font-size:28px;font-weight:900;letter-spacing:.12em;margin:6px 0">${escapeHtml(r.code)}</div><small>Show this code to Pizza Yard staff. It can only be used once.</small></div>`);
+  document.querySelector('#rewards-message').textContent='Reward redeemed successfully!';
+}
+
+// Hook into the existing successful order flow without changing the order submission.
+const originalOpenSuccessModal = openSuccessModal;
+openSuccessModal = function(total){ ensureRewardsMemberFromOrder(); return originalOpenSuccessModal(total); };
+
+document.addEventListener('DOMContentLoaded',()=>{
+  $('#rewards-form')?.addEventListener('submit',checkRewards);
+});
