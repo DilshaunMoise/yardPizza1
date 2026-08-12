@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex,nofollow"><title>Pizza Yard | Staff Ordering</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="staff.css?v=20260812-v3"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js?v=20260812-v3"></script>
+<link rel="stylesheet" href="staff.css?v=20260811-v2"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js?v=20260811-v2"></script>
 </head>
 <body>
 <main class="staff-shell">
@@ -14,17 +14,19 @@
 <header class="staff-header"><div><div class="brand">🍕 Pizza Yard</div><h1>Staff Order</h1><p>Tablet Store Mode • fast touch ordering</p></div><div class="header-actions"><button class="ghost" id="store-mode" type="button">📱 STORE MODE</button><a class="ghost" href="dashboard.html">Live Dashboard</a><button class="ghost" id="logout" type="button">Sign Out</button></div></header>
 <div class="staff-layout">
 <form id="staff-order-form" class="card" novalidate>
-<div class="section-head"><div><span class="eyebrow">ORDER TYPE</span><h2>What are they ordering?</h2></div><span class="badge">STAFF ORDER</span></div>
-<div class="order-category-toggle" role="group" aria-label="Order category"><button type="button" class="category active" data-category="pizza">🍕 PIZZA</button><button type="button" class="category" data-category="breakfast">🍳 BREAKFAST</button></div>
-<div class="section-head customer-head"><div><span class="eyebrow">CUSTOMER</span><h2>Customer details</h2></div><span class="muted small">Name &amp; phone optional</span></div>
+<div class="order-category-toggle" aria-label="Order type">
+<button type="button" class="category active" data-category="pizza">🍕 PIZZA</button>
+<button type="button" class="category" data-category="breakfast">🍳 BREAKFAST</button>
+</div>
+<div class="section-head customer-head"><div><span class="eyebrow">CUSTOMER</span><h2>Who is ordering?</h2></div><span class="badge">STAFF ORDER</span></div>
 <div class="customer-quick">
 <label>Find previous customer <span class="muted">(optional)</span><input id="customer-search" type="search" autocomplete="off" placeholder="Search name or phone"></label>
 <div id="customer-suggestions" class="customer-suggestions hidden"></div><div id="recent-customer-actions" class="recent-customer-actions"><button type="button" class="quick-repeat hidden" id="repeat-last">🔁 REPEAT LAST ORDER</button></div>
 </div>
-<div class="grid2"><label>Customer name <span class="muted">(optional)</span><input id="customer-name" autocomplete="name" placeholder="Walk-in Customer (leave blank)"></label><label>Phone <span class="muted">(optional)</span><input id="customer-phone" inputmode="numeric" autocomplete="tel" placeholder="7121777"></label></div>
+<div class="grid2"><label>Customer name <span class="muted">(optional)</span><input id="customer-name" autocomplete="name" placeholder="Full name"></label><label>Phone <span class="muted">(optional)</span><input id="customer-phone" inputmode="numeric" autocomplete="tel" placeholder="7121777"></label></div>
 <label>Email <span class="muted">(optional)</span><input id="customer-email" type="email" placeholder="customer@email.com"></label>
-<div id="pizza-staff-section">
 <div class="divider"></div>
+<div id="pizza-staff-section">
 <div class="section-head"><div><span class="eyebrow">PIZZA</span><h2>Build the 12&quot; pizza</h2></div><span class="badge">12&quot; ONLY</span></div>
 <div class="mode-toggle"><button type="button" class="mode active" data-mode="whole">Whole Pizza</button><button type="button" class="mode" data-mode="half">Half &amp; Half</button></div>
 <div id="whole-builder"><div id="whole-toppings" class="topping-grid"></div><p id="whole-error" class="error"></p></div>
@@ -35,14 +37,13 @@
 <div class="mode-toggle"><button type="button" class="mode active" data-type="pickup">🏪 Pickup</button><button type="button" class="mode" data-type="delivery">🛵 Delivery</button></div>
 <div id="delivery-fields" class="hidden"><label>Delivery address<textarea id="address" rows="3" placeholder="Customer's delivery address"></textarea></label><p id="delivery-error" class="error"></p></div>
 <div class="quick-notes"><div class="eyebrow">QUICK NOTES</div><div id="quick-note-buttons" class="quick-note-buttons"><button type="button" data-note="Extra crispy">🔥 Extra crispy</button><button type="button" data-note="Extra sauce">🥫 Extra sauce</button><button type="button" data-note="Light cheese">🧀 Light cheese</button><button type="button" data-note="No cheese">🚫 No cheese</button></div></div><label>Special instructions <span class="muted">(optional)</span><textarea id="instructions" rows="3" placeholder="Extra notes for the kitchen"></textarea></label>
-<div class="cart-box"><div class="section-head"><div><span class="eyebrow">ORDER CART</span><h2>Different pizzas</h2></div><span id="cart-count" class="badge">1 ITEM</span></div><div id="cart-list" class="cart-list"></div><button type="button" class="ghost wide" id="add-pizza">＋ ADD ANOTHER DIFFERENT PIZZA</button></div><div class="payment-row"><button type="button" class="payment active" data-payment="unpaid">💵 UNPAID</button><button type="button" class="payment" data-payment="paid">✅ PAID</button><select id="payment-method"><option value="">Payment method</option><option>Cash</option><option>Card</option><option>Other</option></select></div></div>
+<div class="cart-box"><div class="section-head"><div><span class="eyebrow">ORDER CART</span><h2>Different pizzas</h2></div><span id="cart-count" class="badge">1 ITEM</span></div><div id="cart-list" class="cart-list"></div><button type="button" class="ghost wide" id="add-pizza">＋ ADD ANOTHER DIFFERENT PIZZA</button></div>
+</div>
 <div id="breakfast-staff-section" class="hidden">
-<div class="divider"></div>
-<div class="section-head"><div><span class="eyebrow">BREAKFAST</span><h2>Build breakfast order</h2></div><span class="badge">NO DRINKS</span></div>
-<p class="muted small">Choose the breakfast items the customer wants. Drinks are not available in staff tablet mode.</p>
+<div class="section-head"><div><span class="eyebrow">BREAKFAST</span><h2>Build the breakfast order</h2></div><span class="badge">NO DRINKS</span></div>
 <div id="breakfast-menu" class="breakfast-menu"></div>
 </div>
-<button class="primary send" id="send-order" type="submit">SEND ORDER TO DASHBOARD →</button><p id="submit-error" class="error"></p>
+<div class="payment-row"><button type="button" class="payment active" data-payment="unpaid">💵 UNPAID</button><button type="button" class="payment" data-payment="paid">✅ PAID</button><select id="payment-method"><option value="">Payment method</option><option>Cash</option><option>Card</option><option>Other</option></select></div><button class="primary send" id="send-order" type="submit">SEND ORDER TO DASHBOARD →</button><p id="submit-error" class="error"></p>
 </form>
 <aside class="card summary"><div class="section-head"><div><span class="eyebrow">LIVE SUMMARY</span><h2>Order</h2></div><span class="live-dot">●</span></div><div id="summary-pizza" class="summary-pizza">12&quot; Pizza</div><div id="cart-summary" class="cart-summary"></div><div id="summary-toppings" class="chips"><span class="muted">Cheese Pizza</span></div><div id="summary-breakfast" class="summary-breakfast hidden"></div><div class="summary-lines"><div><span>Unit price</span><strong id="unit-price">$20.00</strong></div><div><span>Quantity</span><strong id="summary-qty">1</strong></div><div><span>Delivery</span><strong id="delivery-fee">$0.00</strong></div></div><div class="total"><span>Total</span><strong id="total">$20.00</strong></div><p id="summary-note" class="muted small">Ready to send.</p></aside>
 </div>
