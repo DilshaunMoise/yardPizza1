@@ -83,6 +83,8 @@ const state = {
   trackingToken: null,
   trackingChannel: null,
   trackingPoll: null,
+  lastTrackedStatus: null,
+  notificationPermission: null,
   pizzaMode: "whole",
   leftToppings: [],
   rightToppings: [],
@@ -515,6 +517,75 @@ const TRACKING_STEPS = [
   { key: "completed", label: "Completed", icon: "🎉", message: "Enjoy your Pizza Yard order!" }
 ];
 
+const ORDER_NOTIFICATION_MESSAGES = {
+  new: { title: "Order Received 🍕", body: "We've received your Pizza Yard order." },
+  preparing: { title: "Your order is being prepared 👨‍🍳", body: "The Pizza Yard kitchen is preparing your order now." },
+  in_oven: { title: "Your pizza is in the oven 🔥", body: "Your Pizza Yard order is cooking now." },
+  ready: { title: "Your order is ready! ✅", body: "Your Pizza Yard order is ready for pickup or delivery." },
+  completed: { title: "Order completed 🎉", body: "Enjoy your Pizza Yard order!" },
+  cancelled: { title: "Order cancelled", body: "Your Pizza Yard order was cancelled. Please contact us if you need help." }
+};
+
+function updateNotificationUI() {
+  const btn = $("#enable-notifications");
+  const status = $("#notification-status");
+  if (!btn || !status) return;
+  if (!("Notification" in window)) {
+    btn.disabled = true;
+    btn.textContent = "NOT SUPPORTED";
+    status.textContent = "Your browser does not support notifications.";
+    return;
+  }
+  state.notificationPermission = Notification.permission;
+  if (Notification.permission === "granted") {
+    btn.textContent = "🔔 NOTIFICATIONS ON";
+    btn.disabled = true;
+    status.textContent = "You'll be notified when your order status changes.";
+  } else if (Notification.permission === "denied") {
+    btn.textContent = "NOTIFICATIONS BLOCKED";
+    btn.disabled = true;
+    status.textContent = "Notifications are blocked in your browser settings.";
+  } else {
+    btn.disabled = false;
+    btn.textContent = "TURN ON NOTIFICATIONS";
+    status.textContent = "Get a browser notification when your order changes.";
+  }
+}
+
+async function enableOrderNotifications() {
+  if (!("Notification" in window)) { updateNotificationUI(); return; }
+  try {
+    const permission = await Notification.requestPermission();
+    state.notificationPermission = permission;
+    updateNotificationUI();
+    if (permission === "granted") {
+      const notification = new Notification("Pizza Yard notifications are on 🔔", {
+        body: "We'll let you know when your order status changes.",
+        tag: "pizza-yard-notification-enabled"
+      });
+      notification.onclick = () => window.focus();
+    }
+  } catch (error) {
+    console.warn("Notification permission request failed:", error);
+  }
+}
+
+function notifyOrderStatus(status) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const message = ORDER_NOTIFICATION_MESSAGES[status];
+  if (!message) return;
+  try {
+    const notification = new Notification(`Pizza Yard • ${message.title}`, {
+      body: message.body,
+      tag: `pizza-yard-order-${state.trackingToken}-${status}`,
+      renotify: true
+    });
+    notification.onclick = () => { window.focus(); notification.close(); };
+  } catch (error) {
+    console.warn("Could not show order notification:", error);
+  }
+}
+
 function trackerStepIndex(status) {
   if (status === "cancelled") return -1;
   const i = TRACKING_STEPS.findIndex((step) => step.key === status);
@@ -567,13 +638,22 @@ async function fetchTrackedOrder() {
 
   if (!error && data && data.length) {
     const order = data[0];
-    renderTracker(order.status, order.customer_name);
+    const nextStatus = order.status;
+    if (state.lastTrackedStatus === null) {
+      state.lastTrackedStatus = nextStatus;
+    } else if (nextStatus !== state.lastTrackedStatus) {
+      state.lastTrackedStatus = nextStatus;
+      notifyOrderStatus(nextStatus);
+    }
+    renderTracker(nextStatus, order.customer_name);
   }
 }
 
 function startOrderTracking() {
   if (!state.trackingToken || !window.pizzaYardSupabase) return;
+  state.lastTrackedStatus = null;
   renderTracker("new");
+  updateNotificationUI();
   fetchTrackedOrder();
   clearInterval(state.trackingPoll);
   state.trackingPoll = setInterval(fetchTrackedOrder, 5000);
@@ -711,6 +791,9 @@ function init() {
     resetOrder();
     document.querySelector("#builder").scrollIntoView({ behavior: "smooth", block: "start" });
   });
+
+  $("#enable-notifications")?.addEventListener("click", enableOrderNotifications);
+  updateNotificationUI();
 
   elements.modalClose.addEventListener("click", closeSuccessModal);
   elements.successModal.addEventListener("click", (event) => {
