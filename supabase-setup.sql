@@ -29,6 +29,10 @@ create index if not exists pizza_orders_status_idx on public.pizza_orders(status
 alter table public.pizza_orders
   add column if not exists tracking_token text;
 
+-- Multiple customer pizzas: stores the full per-pizza configuration.
+alter table public.pizza_orders
+  add column if not exists order_details jsonb;
+
 create unique index if not exists pizza_orders_tracking_token_idx
   on public.pizza_orders(tracking_token)
   where tracking_token is not null;
