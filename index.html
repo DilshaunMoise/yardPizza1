@@ -171,10 +171,21 @@
 
             <div class="builder-divider"></div>
 
+            <div class="multi-pizza-panel" aria-label="Multiple pizza order">
+              <div class="multi-pizza-heading">
+                <div><span class="step-label">MULTIPLE PIZZAS</span><h3>Ordering more than one pizza?</h3><p>Build this pizza, then add another one with its own toppings.</p></div>
+                <span class="pizza-cart-count"><span id="pizza-cart-count">0</span> added</span>
+              </div>
+              <button type="button" class="add-another-pizza" id="add-another-pizza">🍕 ADD ANOTHER PIZZA</button>
+              <div id="pizza-cart-list" class="pizza-cart-list"><p class="muted">No additional pizzas yet. Build your first pizza above.</p></div>
+            </div>
+
+            <div class="builder-divider"></div>
+
             <div class="builder-controls">
               <div class="control-block">
                 <span class="step-label">STEP 2</span>
-                <h3>How many boxes?</h3>
+                <h3>How many of this pizza?</h3>
                 <div class="quantity-control" aria-label="Pizza quantity">
                   <button type="button" id="qty-minus" aria-label="Decrease quantity">−</button>
                   <output id="quantity-output" aria-live="polite">1</output>

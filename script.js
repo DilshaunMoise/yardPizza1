@@ -86,7 +86,8 @@ const state = {
   pizzaMode: "whole",
   leftToppings: [],
   rightToppings: [],
-  toppingAvailability: {}
+  toppingAvailability: {},
+  cart: []
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -131,6 +132,9 @@ const elements = {
   navMenu: $("#nav-menu"),
   wholeBuilder: $("#whole-builder"),
   halfBuilder: $("#half-builder"),
+  cartList: $("#pizza-cart-list"),
+  addAnotherPizza: $("#add-another-pizza"),
+  cartCount: $("#pizza-cart-count"),
   leftToppingGrid: $("#left-topping-grid"),
   rightToppingGrid: $("#right-topping-grid")
 };
@@ -152,17 +156,44 @@ function calculatePizzaUnitPrice(toppingCount) {
     Math.max(0, toppingCount - CONFIG.pizza.includedToppings) * CONFIG.pizza.extraToppingPrice;
 }
 
-function calculateOrder() {
+function currentPizzaSnapshot() {
   const toppingCount = uniqueToppings().length;
   const unitPrice = calculatePizzaUnitPrice(toppingCount);
   const includedToppings = Math.min(toppingCount, CONFIG.pizza.includedToppings);
   const extraToppings = Math.max(0, toppingCount - CONFIG.pizza.includedToppings);
   const extraToppingCost = extraToppings * CONFIG.pizza.extraToppingPrice;
-  const pizzasSubtotal = unitPrice * state.quantity;
-  const deliveryFee = state.orderType === "delivery" && state.quantity >= CONFIG.delivery.minimumBoxes
-    ? CONFIG.delivery.fee : 0;
-  return { toppingCount, unitPrice, includedToppings, extraToppings, extraToppingCost,
-    pizzasSubtotal, deliveryFee, total: pizzasSubtotal + deliveryFee };
+  return {
+    mode: state.pizzaMode,
+    toppings: [...state.selectedToppings],
+    left: [...state.leftToppings],
+    right: [...state.rightToppings],
+    quantity: state.quantity,
+    toppingCount, unitPrice, includedToppings, extraToppings, extraToppingCost
+  };
+}
+
+function pizzaLabel(pizza, index) {
+  if (pizza.mode === "half") {
+    return `Pizza ${index + 1}: Left — ${pizza.left.length ? pizza.left.join(", ") : "Cheese"} | Right — ${pizza.right.length ? pizza.right.join(", ") : "Cheese"}`;
+  }
+  return `Pizza ${index + 1}: ${pizza.toppings.length ? pizza.toppings.join(", ") : "Cheese Pizza"}`;
+}
+
+function cartBoxes() {
+  return state.cart.reduce((sum, p) => sum + Number(p.quantity || 1), 0) + Number(state.quantity || 1);
+}
+
+function calculateOrder() {
+  const current = currentPizzaSnapshot();
+  const pizzas = [...state.cart, current];
+  const pizzasSubtotal = pizzas.reduce((sum, p) => sum + Number(p.unitPrice) * Number(p.quantity || 1), 0);
+  const totalToppingCount = pizzas.reduce((sum, p) => sum + Number(p.toppingCount || 0) * Number(p.quantity || 1), 0);
+  const includedToppings = pizzas.reduce((sum, p) => sum + Number(p.includedToppings || 0) * Number(p.quantity || 1), 0);
+  const extraToppings = pizzas.reduce((sum, p) => sum + Number(p.extraToppings || 0) * Number(p.quantity || 1), 0);
+  const extraToppingCost = pizzas.reduce((sum, p) => sum + Number(p.extraToppingCost || 0) * Number(p.quantity || 1), 0);
+  const boxes = pizzas.reduce((sum, p) => sum + Number(p.quantity || 1), 0);
+  const deliveryFee = state.orderType === "delivery" && boxes >= CONFIG.delivery.minimumBoxes ? CONFIG.delivery.fee : 0;
+  return { toppingCount: totalToppingCount, unitPrice: current.unitPrice, includedToppings, extraToppings, extraToppingCost, pizzasSubtotal, deliveryFee, total: pizzasSubtotal + deliveryFee, boxes, pizzas };
 }
 
 function toppingButton(topping, selected, clickHandler) {
@@ -240,7 +271,7 @@ function updateOrderType() {
 
 function updateDeliveryUI() {
   const isDelivery = state.orderType === "delivery";
-  const eligible = state.quantity >= CONFIG.delivery.minimumBoxes;
+  const eligible = cartBoxes() >= CONFIG.delivery.minimumBoxes;
 
   $$(".type-option").forEach((label) => {
     const input = label.querySelector("input");
@@ -263,39 +294,52 @@ function updateDeliveryUI() {
   }
 }
 
+function renderPizzaCart() {
+  if (!elements.cartList) return;
+  const items = state.cart;
+  elements.cartList.innerHTML = items.length ? items.map((p, i) => {
+    const label = pizzaLabel(p, i);
+    return `<div class="pizza-cart-item"><div><strong>🍕 ${escapeHtml(label)}</strong><small>${p.quantity} box${p.quantity === 1 ? "" : "es"} • ${money(p.unitPrice * p.quantity)}</small></div><button type="button" class="cart-remove" data-cart-index="${i}" aria-label="Remove pizza ${i + 1}">Remove</button></div>`;
+  }).join("") : '<p class="muted">No additional pizzas yet. Build your first pizza above.</p>';
+  elements.cartCount.textContent = String(items.length);
+  elements.cartList.querySelectorAll(".cart-remove").forEach(btn => btn.addEventListener("click", () => {
+    state.cart.splice(Number(btn.dataset.cartIndex), 1);
+    renderPizzaCart(); updateDeliveryUI(); updateUI();
+  }));
+}
+
 function updateUI() {
   const order = calculateOrder();
-
-  elements.selectedCount.textContent = order.toppingCount;
-  elements.summaryToppingCount.textContent =
-    `${order.toppingCount} topping${order.toppingCount === 1 ? "" : "s"}`;
-
-  if (order.toppingCount === 0) {
-    elements.summaryToppingsList.innerHTML = '<span class="summary-chip">Cheese Pizza</span>';
+  elements.selectedCount.textContent = uniqueToppings().length;
+  elements.summaryToppingCount.textContent = `${order.toppingCount} topping${order.toppingCount === 1 ? "" : "s"} across ${order.boxes} box${order.boxes === 1 ? "" : "es"}`;
+  if (order.pizzas.length > 1) {
+    elements.summaryToppingsList.innerHTML = order.pizzas.map((p, i) => `<span class="summary-chip">${escapeHtml(pizzaLabel(p, i))}${p.quantity > 1 ? ` ×${p.quantity}` : ""}</span>`).join("");
   } else if (state.pizzaMode === "half") {
     elements.summaryToppingsList.innerHTML = `<span class="summary-chip">Left: ${state.leftToppings.length ? state.leftToppings.map(escapeHtml).join(", ") : "Cheese"}</span><span class="summary-chip">Right: ${state.rightToppings.length ? state.rightToppings.map(escapeHtml).join(", ") : "Cheese"}</span>`;
   } else {
-    elements.summaryToppingsList.innerHTML = state.selectedToppings.map(t => `<span class="summary-chip">${escapeHtml(t)}</span>`).join("");
+    elements.summaryToppingsList.innerHTML = state.selectedToppings.length ? state.selectedToppings.map(t => `<span class="summary-chip">${escapeHtml(t)}</span>`).join("") : '<span class="summary-chip">Cheese Pizza</span>';
   }
-
-  elements.summaryBase.textContent = money(order.unitPrice);
+  elements.summaryBase.textContent = money(order.pizzasSubtotal);
   elements.summaryIncluded.textContent = order.includedToppings;
   elements.summaryExtraCount.textContent = order.extraToppings;
   elements.summaryExtraCost.textContent = money(order.extraToppingCost);
-  elements.summaryQuantity.textContent = state.quantity;
+  elements.summaryQuantity.textContent = order.boxes;
   elements.summaryDelivery.textContent = money(order.deliveryFee);
   elements.summaryTotal.textContent = money(order.total);
+  elements.deliverySummary.textContent = state.orderType === "delivery" ? (order.boxes >= CONFIG.delivery.minimumBoxes ? `Delivery fee: ${money(order.deliveryFee)}.` : `Delivery requires ${CONFIG.delivery.minimumBoxes} boxes. You currently have ${order.boxes}.`) : "Pickup selected — no delivery fee.";
+  renderPizzaCart();
+}
 
-  if (state.orderType === "delivery" && state.quantity >= CONFIG.delivery.minimumBoxes) {
-    elements.deliverySummary.textContent = `Delivery selected — ${money(CONFIG.delivery.fee)} fee included.`;
-  } else if (state.orderType === "delivery") {
-    elements.deliverySummary.textContent =
-      `Delivery requires ${CONFIG.delivery.minimumBoxes} boxes or more.`;
-  } else {
-    elements.deliverySummary.textContent = "Pickup selected — no delivery fee.";
+function addCurrentPizza() {
+  if (state.pizzaMode === "half" && (!state.leftToppings.length || !state.rightToppings.length)) {
+    elements.toppingsError.textContent = "Choose at least one topping on each half, or switch back to Whole Pizza.";
+    return;
   }
-
-  elements.qtyMinus.disabled = state.quantity <= 1;
+  state.cart.push(currentPizzaSnapshot());
+  state.selectedToppings = []; state.leftToppings = []; state.rightToppings = []; state.pizzaMode = "whole"; state.quantity = 1;
+  elements.quantityOutput.value = 1; elements.quantityOutput.textContent = 1; elements.toppingsError.textContent = "";
+  renderToppings(); updateDeliveryUI(); updateUI();
+  document.querySelector("#builder")?.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 function escapeHtml(value) {
@@ -355,7 +399,7 @@ function validateForm() {
   }
 
   if (state.orderType === "delivery") {
-    if (state.quantity < CONFIG.delivery.minimumBoxes) {
+    if (cartBoxes() < CONFIG.delivery.minimumBoxes) {
       elements.deliveryWarning.classList.add("visible");
       valid = false;
     }
@@ -384,43 +428,17 @@ function buildOrderDetails() {
     orderType: state.orderType,
     address,
     instructions,
-    ...order
+    ...order,
+    pizzas: order.pizzas
   };
 }
 
 function buildEmailBody(details) {
-  const toppingLines = state.pizzaMode === "half"
-    ? [`Left half: ${state.leftToppings.join(", ") || "Cheese"}`, `Right half: ${state.rightToppings.join(", ") || "Cheese"}`].join("\n")
-    : state.selectedToppings.map((topping) => `- ${topping}`).join("\n");
-
+  const pizzaLines = details.pizzas.map((pizza, i) => `Pizza ${i + 1} (${pizza.quantity} box${pizza.quantity === 1 ? "" : "es"}): ${pizza.mode === "half" ? `Left: ${pizza.left.join(", ") || "Cheese"} | Right: ${pizza.right.join(", ") || "Cheese"}` : (pizza.toppings.join(", ") || "Cheese Pizza")} — ${money(pizza.unitPrice * pizza.quantity)}`).join("\n");
   return [
-    "NEW PIZZA ORDER 🍕",
-    "",
-    "BUSINESS",
-    `Business: ${CONFIG.businessName}`,
-    `Location: ${CONFIG.location}`,
-    "",
-    "CUSTOMER",
-    `Name: ${details.customerName}`,
-    `Phone: ${details.customerPhone}`,
-    `Email: ${details.customerEmail}`,
-    "",
-    "ORDER",
-    `Pizza: ${CONFIG.pizza.size}`,
-    "Toppings:",
-    toppingLines,
-    `Number of toppings: ${details.toppingCount}`,
-    `Base price: ${money(details.unitPrice)}`,
-    `Included toppings: ${details.includedToppings}`,
-    `Extra toppings: ${details.extraToppings}`,
-    `Extra topping cost: ${money(details.extraToppingCost)}`,
-    `Quantity: ${state.quantity}`,
-    `Order type: ${state.orderType === "delivery" ? "Delivery" : "Pickup"}`,
-    `Delivery fee: ${money(details.deliveryFee)}`,
-    ...(state.orderType === "delivery" ? [`Delivery address: ${details.address}`] : []),
-    `Special instructions: ${details.instructions || "None"}`,
-    "",
-    `TOTAL: ${money(details.total)}`
+    "NEW PIZZA ORDER 🍕", "", "BUSINESS", `Business: ${CONFIG.businessName}`, `Location: ${CONFIG.location}`, "",
+    "CUSTOMER", `Name: ${details.customerName}`, `Phone: ${details.customerPhone}`, `Email: ${details.customerEmail}`, "",
+    "ORDER", `Total pizzas/boxes: ${details.boxes}`, pizzaLines, `Order type: ${state.orderType === "delivery" ? "Delivery" : "Pickup"}`, `Delivery fee: ${money(details.deliveryFee)}`, ...(state.orderType === "delivery" ? [`Delivery address: ${details.address}`] : []), `Special instructions: ${details.instructions || "None"}`, "", `TOTAL: ${money(details.total)}`
   ].join("\n");
 }
 
@@ -437,87 +455,35 @@ function createTrackingToken() {
 }
 
 async function saveOrderToSupabase(details) {
-  if (!window.pizzaYardSupabase) {
-    throw new Error("Supabase is not configured.");
-  }
-
+  if (!window.pizzaYardSupabase) throw new Error("Supabase is not configured.");
   state.trackingToken = createTrackingToken();
-
+  const toppingsSummary = details.pizzas.map((p, i) => pizzaLabel(p, i));
   const payload = {
-    customer_name: details.customerName,
-    customer_phone: details.customerPhone,
-    customer_email: details.customerEmail,
-    order_type: details.orderType,
-    delivery_address: details.address || null,
-    pizza_size: CONFIG.pizza.size,
-    toppings: state.pizzaMode === "half"
-      ? { mode: "half_and_half", left: [...state.leftToppings], right: [...state.rightToppings] }
-      : [...state.selectedToppings],
-    order_source: "online",
-    topping_count: details.toppingCount,
-    unit_price: details.unitPrice,
-    included_toppings: details.includedToppings,
-    extra_toppings: details.extraToppings,
-    extra_topping_cost: details.extraToppingCost,
-    quantity: state.quantity,
-    delivery_fee: details.deliveryFee,
-    special_instructions: details.instructions || null,
-    total: details.total,
-    status: "new",
-    tracking_token: state.trackingToken
+    customer_name: details.customerName, customer_phone: details.customerPhone, customer_email: details.customerEmail,
+    order_type: details.orderType, delivery_address: details.address || null, pizza_size: CONFIG.pizza.size,
+    toppings: toppingsSummary, order_source: "online", topping_count: details.toppingCount,
+    unit_price: details.pizzasSubtotal / Math.max(1, details.boxes), included_toppings: details.includedToppings,
+    extra_toppings: details.extraToppings, extra_topping_cost: details.extraToppingCost, quantity: details.boxes,
+    delivery_fee: details.deliveryFee, special_instructions: details.instructions || null, total: details.total, status: "new", tracking_token: state.trackingToken,
+    order_details: JSON.stringify(details.pizzas)
   };
-
-  const { error } = await window.pizzaYardSupabase
-    .from("pizza_orders")
-    .insert(payload);
-
-  if (error) {
-    console.error("Supabase order save failed:", error);
-    throw new Error("We couldn't receive your order right now. Please try again.");
-  }
-
+  const { error } = await window.pizzaYardSupabase.from("pizza_orders").insert(payload);
+  if (error) { console.error("Supabase order save failed:", error); throw new Error("We couldn't receive your order right now. Please try again."); }
   localStorage.setItem("pizzaYardTrackingToken", state.trackingToken);
   return state.trackingToken;
 }
 
 async function sendFormspreeBackup(details) {
-  if (!CONFIG.formspreeEndpoint ||
-      CONFIG.formspreeEndpoint === "YOUR_EMAIL_SERVICE_ENDPOINT") {
-    console.warn("Formspree endpoint is not configured.");
-    return false;
-  }
-
-  const body = buildEmailBody(details);
-  const formData = new FormData();
+  if (!CONFIG.formspreeEndpoint || CONFIG.formspreeEndpoint === "YOUR_EMAIL_SERVICE_ENDPOINT") return false;
+  const body = buildEmailBody(details); const formData = new FormData();
   formData.append("_subject", `New Pizza Yard Order — ${details.customerName}`);
-  formData.append("customer_name", details.customerName);
-  formData.append("customer_phone", details.customerPhone);
-  formData.append("customer_email", details.customerEmail);
-  formData.append("order_type", details.orderType);
-  formData.append("delivery_address", details.address || "N/A");
-  formData.append("pizza_size", CONFIG.pizza.size);
-  formData.append("toppings", state.pizzaMode === "half"
-    ? `Left: ${state.leftToppings.join(", ") || "Cheese"} | Right: ${state.rightToppings.join(", ") || "Cheese"}`
-    : state.selectedToppings.join(", "));
-  formData.append("number_of_toppings", String(details.toppingCount));
-  formData.append("base_price", money(details.unitPrice));
-  formData.append("included_toppings", String(details.includedToppings));
-  formData.append("extra_toppings", String(details.extraToppings));
-  formData.append("extra_topping_cost", money(details.extraToppingCost));
-  formData.append("quantity", String(state.quantity));
-  formData.append("delivery_fee", money(details.deliveryFee));
-  formData.append("special_instructions", details.instructions || "None");
-  formData.append("total", money(details.total));
-  formData.append("order_details", body);
-
-  const response = await fetch(CONFIG.formspreeEndpoint, {
-    method: "POST",
-    body: formData,
-    headers: { Accept: "application/json" }
-  });
-
-  if (!response.ok) throw new Error("Formspree backup failed.");
-  return true;
+  formData.append("customer_name", details.customerName); formData.append("customer_phone", details.customerPhone); formData.append("customer_email", details.customerEmail);
+  formData.append("order_type", details.orderType); formData.append("delivery_address", details.address || "N/A"); formData.append("pizza_size", CONFIG.pizza.size);
+  formData.append("toppings", details.pizzas.map((p,i)=>pizzaLabel(p,i)).join("\n")); formData.append("number_of_toppings", String(details.toppingCount));
+  formData.append("quantity", String(details.boxes)); formData.append("delivery_fee", money(details.deliveryFee)); formData.append("special_instructions", details.instructions || "None");
+  formData.append("total", money(details.total)); formData.append("order_details", body);
+  const response = await fetch(CONFIG.formspreeEndpoint, { method: "POST", body: formData, headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error("Formspree backup failed."); return true;
 }
 
 async function submitOrder(details) {
@@ -643,6 +609,7 @@ function resetOrder() {
   state.pizzaMode = "whole";
   state.quantity = 1;
   state.orderType = "pickup";
+  state.cart = [];
   elements.form.reset();
   elements.orderTypeInputs[0].checked = true;
   elements.address.required = false;
@@ -736,6 +703,8 @@ function init() {
   loadToppingAvailability();
   loadPublicReviews();
   $("#review-form")?.addEventListener("submit",submitReview);$("#post-order-review")?.addEventListener("click",()=>{document.querySelector("#reviews")?.scrollIntoView({behavior:"smooth"});document.querySelector("#review-comment")?.focus()});
+
+  elements.addAnotherPizza?.addEventListener("click", addCurrentPizza);
 
   elements.anotherOrder.addEventListener("click", () => {
     closeSuccessModal();
