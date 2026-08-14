@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pizza Yard — fresh 12-inch pizzas made your way in Ti Rocher, Castries, Saint Lucia.">
+  <title>Pizza Yard | Fresh Pizza. Made Your Way.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="script.js"></script>
+<link rel="stylesheet" href="breakfast-banner.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="brand" href="#home" aria-label="Pizza Yard home">
+        <span class="brand-mark" aria-hidden="true">🍕</span>
+        <span>Pizza Yard</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="Open navigation">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-menu" id="nav-menu">
+        <a href="#home">Home</a>
+        <a href="#menu">Menu</a>
+        <a href="#builder">Build Your Pizza</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#rewards">Rewards ⭐</a><a href="#reviews">Reviews ⭐</a><a href="#contact">Contact</a>
+        <a class="nav-order" href="#builder">Order Now</a><a class="nav-breakfast" href="breakfast.html">🍳 Sunday Breakfast</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" id="home">
+      <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
+      <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">TI ROCHER • CASTRIES • SAINT LUCIA</p>
+          <h1>Fresh Pizza.<br><span>Made Your Way.</span> 🍕</h1>
+          <p class="hero-text">Build your own 12&quot; Pizza Yard pizza with the toppings you love. Order online for pickup or delivery.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#builder">Order Now <span aria-hidden="true">→</span></a>
+            <a class="btn btn-secondary" href="tel:7121777">Call 7121777</a>
+          </div>
+          <a class="breakfast-hero-cta" href="breakfast.html">🍳 <span><strong>SUNDAY BREAKFAST — PRE-ORDER NOW</strong><small>Order during the week for Sunday • See breakfast menu →</small></span></a>
+
+          <div class="hero-meta">
+            <span>📍 Ti Rocher, Castries</span>
+            <span>🚚 Delivery from 3 boxes</span>
+          </div>
+        </div>
+
+        <div class="hero-art" aria-label="Decorative pizza illustration">
+          <div class="pizza-shadow"></div>
+          <div class="pizza-plate">
+            <div class="pizza">
+              <div class="crust"></div>
+              <div class="sauce"></div>
+              <div class="cheese"></div>
+              <span class="pep pepperoni-a"></span>
+              <span class="pep pepperoni-b"></span>
+              <span class="pep pepperoni-c"></span>
+              <span class="pep pepperoni-d"></span>
+              <span class="mush mushroom-a"></span>
+              <span class="mush mushroom-b"></span>
+              <span class="pep pepperoni-e"></span>
+            </div>
+          </div>
+          <div class="floating-card card-price">
+            <span>12&quot; pizza</span>
+            <strong>From $20</strong>
+          </div>
+          <div class="floating-card card-toppings">
+            <span class="mini-check">✓</span>
+            <span>Choose your toppings</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section menu-section" id="menu">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">THE MENU</p>
+          <h2>Simple pricing. <span>Your choice.</span></h2>
+          <p>Every Pizza Yard pizza starts with our 12&quot; size. Pick your toppings and we calculate the rest.</p>
+        </div>
+
+        <div class="menu-grid">
+          <article class="menu-card">
+            <div class="menu-icon">🍕</div>
+            <div>
+              <p class="card-kicker">12&quot; PIZZA</p>
+              <h3>One-Topping</h3>
+              <p>Choose any one topping.</p>
+            </div>
+            <div class="menu-price">$20</div>
+            <a class="text-button" href="#builder">Build Your Pizza →</a>
+          </article>
+
+          <article class="menu-card featured">
+            <span class="popular">MOST POPULAR</span>
+            <div class="menu-icon">🍕</div>
+            <div>
+              <p class="card-kicker">12&quot; PIZZA</p>
+              <h3>Two-Topping</h3>
+              <p>Choose any two toppings.</p>
+            </div>
+            <div class="menu-price">$25</div>
+            <a class="text-button" href="#builder">Build Your Pizza →</a>
+          </article>
+
+          <article class="menu-card">
+            <div class="menu-icon">＋</div>
+            <div>
+              <p class="card-kicker">CUSTOMIZE</p>
+              <h3>Extra Toppings</h3>
+              <p>+$3 each after the first two.</p>
+            </div>
+            <div class="menu-price">+$3</div>
+            <a class="text-button" href="#builder">Customize Your Pizza →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section builder-section" id="builder">
+      <div class="container">
+        <div class="section-heading builder-heading">
+          <p class="eyebrow">BUILD YOUR PIZZA</p>
+          <h2>Your pizza. <span>Your picks.</span></h2>
+          <p>Choose whole-pizza or half-and-half toppings, then pick your quantity and pickup or delivery.</p>
+        </div>
+
+        <div class="builder-layout">
+          <form id="order-form" class="builder-card" novalidate>
+            <div class="builder-topline">
+              <div>
+                <span class="step-label">STEP 1</span>
+                <h3>Choose your toppings</h3>
+              </div>
+              <div class="size-badge">12&quot; PIZZA</div>
+            </div>
+
+            <div class="pizza-mode" role="group" aria-label="Pizza topping style">
+              <button type="button" class="pizza-mode-btn active" data-mode="whole">Whole Pizza</button>
+              <button type="button" class="pizza-mode-btn" data-mode="half">Half &amp; Half</button>
+            </div>
+            <div id="whole-builder">
+              <div class="topping-grid" id="topping-grid" aria-label="Available pizza toppings"></div>
+            </div>
+            <div id="half-builder" class="half-builder hidden">
+              <div class="half-column"><h4>Left Half</h4><div class="topping-grid" id="left-topping-grid"></div></div>
+              <div class="half-column"><h4>Right Half</h4><div class="topping-grid" id="right-topping-grid"></div></div>
+            </div>
+            <p class="field-error" id="toppings-error" role="alert"></p>
+
+            <div class="selection-bar">
+              <span><strong id="selected-count">0</strong> unique toppings selected</span>
+              <span>First 2 unique toppings included</span>
+            </div>
+
+            <div class="builder-divider"></div>
+
+            <div class="multi-pizza-panel" aria-label="Multiple pizza order">
+              <div class="multi-pizza-heading">
+                <div><span class="step-label">MULTIPLE PIZZAS</span><h3>Ordering more than one pizza?</h3><p>Build this pizza, then add another one with its own toppings.</p></div>
+                <span class="pizza-cart-count"><span id="pizza-cart-count">0</span> added</span>
+              </div>
+              <button type="button" class="add-another-pizza" id="add-another-pizza">🍕 ADD ANOTHER PIZZA</button>
+              <div id="pizza-cart-list" class="pizza-cart-list"><p class="muted">No additional pizzas yet. Build your first pizza above.</p></div>
+            </div>
+
+            <div class="builder-divider"></div>
+
+            <div class="builder-controls">
+              <div class="control-block">
+                <span class="step-label">STEP 2</span>
+                <h3>How many of this pizza?</h3>
+                <div class="quantity-control" aria-label="Pizza quantity">
+                  <button type="button" id="qty-minus" aria-label="Decrease quantity">−</button>
+                  <output id="quantity-output" aria-live="polite">1</output>
+                  <button type="button" id="qty-plus" aria-label="Increase quantity">+</button>
+                </div>
+              </div>
+
+              <div class="control-block">
+                <span class="step-label">STEP 3</span>
+                <h3>Pickup or delivery?</h3>
+                <div class="order-type" role="radiogroup" aria-label="Order type">
+                  <label class="type-option selected">
+                    <input type="radio" name="orderType" value="pickup" checked>
+                    <span class="type-icon">🏪</span>
+                    <span>
+                      <strong>Pickup</strong>
+                      <small>Pick up your order</small>
+                    </span>
+                  </label>
+                  <label class="type-option">
+                    <input type="radio" name="orderType" value="delivery">
+                    <span class="type-icon">🛵</span>
+                    <span>
+                      <strong>Delivery</strong>
+                      <small>$5 • 3 boxes minimum</small>
+                    </span>
+                  </label>
+                </div>
+                <p class="delivery-warning" id="delivery-warning" role="alert">Delivery is available for orders of 3 boxes and up.</p>
+              </div>
+            </div>
+
+            <div class="address-wrap hidden" id="address-wrap">
+              <label for="delivery-address">Delivery Address <span>*</span></label>
+              <textarea id="delivery-address" name="deliveryAddress" rows="3" placeholder="Enter the address where you want your order delivered"></textarea>
+              <p class="field-error" id="address-error" role="alert"></p>
+            </div>
+
+            <div class="builder-divider"></div>
+
+            <div class="customer-section">
+              <div>
+                <span class="step-label">STEP 4</span>
+                <h3>Your details</h3>
+              </div>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="full-name">Full Name <span>*</span></label>
+                  <input id="full-name" name="fullName" type="text" autocomplete="name" required>
+                  <p class="field-error" id="name-error" role="alert"></p>
+                </div>
+                <div class="field">
+                  <label for="phone">Phone Number <span>*</span></label>
+                  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="7121777" required>
+                  <p class="field-error" id="phone-error" role="alert"></p>
+                </div>
+                <div class="field full-width">
+                  <label for="email">Email Address <span>*</span></label>
+                  <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                  <p class="field-error" id="email-error" role="alert"></p>
+                </div>
+                <div class="field full-width rewards-optin">
+                  <label class="rewards-optin-label"><input id="join-rewards" type="checkbox"> <span>⭐ Join Pizza Yard Rewards — earn points on this order</span></label>
+                </div>
+                <div class="field full-width">
+                  <label for="instructions">Additional Instructions <em>Optional</em></label>
+                  <textarea id="instructions" name="instructions" rows="3" placeholder="Anything else we should know?"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary place-order" id="place-order" type="submit">
+              <span class="button-label">Place Order <span aria-hidden="true">→</span></span>
+              <span class="button-loading" aria-hidden="true"><span class="spinner"></span> Sending...</span>
+            </button>
+            <p class="form-note">Your order is submitted securely through our online order service. You will stay on this website.</p>
+            <p class="submission-error" id="submission-error" role="alert"></p>
+          </form>
+
+          <aside class="order-summary" aria-label="Live order summary">
+            <div class="summary-header">
+              <div>
+                <span class="eyebrow">LIVE SUMMARY</span>
+                <h3>Your Order</h3>
+              </div>
+              <span class="summary-dot" aria-hidden="true"></span>
+            </div>
+
+            <div class="summary-pizza">
+              <div class="summary-pizza-icon">🍕</div>
+              <div>
+                <strong>12&quot; Pizza</strong>
+                <span id="summary-topping-count">0 toppings</span>
+              </div>
+            </div>
+
+            <div class="summary-toppings">
+              <span class="summary-label">Toppings</span>
+              <div id="summary-toppings-list"><span class="muted">No toppings selected yet</span></div>
+            </div>
+
+            <div class="summary-lines">
+              <div><span>Base Price</span><strong id="summary-base">$0.00</strong></div>
+              <div><span>Included Toppings</span><strong id="summary-included">0</strong></div>
+              <div><span>Extra Toppings</span><strong id="summary-extra-count">0</strong></div>
+              <div><span>Extra Topping Cost</span><strong id="summary-extra-cost">$0.00</strong></div>
+              <div><span>Quantity</span><strong id="summary-quantity">1</strong></div>
+              <div><span>Delivery Fee</span><strong id="summary-delivery">$0.00</strong></div>
+            </div>
+
+            <div class="summary-total">
+              <span>Total</span>
+              <strong id="summary-total">$0.00</strong>
+            </div>
+
+            <p class="delivery-summary" id="delivery-summary">Pickup selected — no delivery fee.</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section how-section" id="how-it-works">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">HOW IT WORKS</p>
+          <h2>Good pizza, <span>no guessing.</span></h2>
+        </div>
+        <div class="steps">
+          <div class="step-card">
+            <span>01</span>
+            <div>🍕</div>
+            <h3>Build it</h3>
+            <p>Choose from our 9 available toppings for your 12&quot; pizza, including Veg.</p>
+          </div>
+          <div class="step-card">
+            <span>02</span>
+            <div>🧾</div>
+            <h3>See the price</h3>
+            <p>Your total updates instantly as you customize your order.</p>
+          </div>
+          <div class="step-card">
+            <span>03</span>
+            <div>🛵</div>
+            <h3>Choose pickup</h3>
+            <p>Or select delivery when ordering 3 boxes or more.</p>
+          </div>
+          <div class="step-card">
+            <span>04</span>
+            <div>✅</div>
+            <h3>Place your order</h3>
+            <p>Submit online and stay right here while your order is sent.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section rewards-section" id="rewards">
+  <div class="container">
+    <div class="section-heading"><p class="eyebrow">PIZZA YARD REWARDS</p><h2>Every order gets you <span>closer to free pizza.</span></h2><p>Earn 1 point for every $1 on completed pizza or breakfast orders.</p></div>
+    <div class="rewards-card">
+      <div class="rewards-copy"><div class="rewards-badge">🍕 REWARDS</div><h3>Join free. Keep earning.</h3><p>100 points = $5 OFF • 200 points = $10 OFF • 300 points = FREE 12&quot; PIZZA</p><p class="muted">Points are added automatically when your order is completed.</p></div>
+      <form id="rewards-form" class="rewards-form">
+        <label>Your name<input id="rewards-name" type="text" autocomplete="name" placeholder="Full name" required></label>
+        <label>Phone number<input id="rewards-phone" type="tel" inputmode="tel" placeholder="7121777" required></label>
+        <button class="btn btn-primary" type="submit">⭐ CHECK MY REWARDS</button>
+        <p id="rewards-message" class="field-error" role="alert"></p>
+      </form>
+      <div id="rewards-result" class="rewards-result hidden" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section reviews-section" id="reviews">
+<div class="container"><div class="section-heading"><p class="eyebrow">CUSTOMER REVIEWS</p><h2>What customers <span>say.</span></h2><p>Love your Pizza Yard order? Leave us a quick review.</p></div>
+<div class="reviews-layout"><div class="review-form-card"><form id="review-form"><label>Rating <span>*</span><select id="review-rating" required><option value="5">★★★★★ — 5 stars</option><option value="4">★★★★☆ — 4 stars</option><option value="3">★★★☆☆ — 3 stars</option><option value="2">★★☆☆☆ — 2 stars</option><option value="1">★☆☆☆☆ — 1 star</option></select></label><label>Your name <em>Optional</em><input id="review-name" maxlength="60" placeholder="Your name"></label><label>Your review <span>*</span><textarea id="review-comment" rows="5" maxlength="500" required placeholder="Tell us what you thought about your pizza..."></textarea></label><button class="btn btn-primary" type="submit">Submit Review →</button><p id="review-form-message" class="field-error" role="alert"></p></form></div><div><div id="reviews-list" class="reviews-list"><p class="muted">Loading reviews…</p></div></div></div></div>
+</section>
+
+<section class="contact-strip" id="contact">
+      <div class="container contact-inner">
+        <div>
+          <p class="eyebrow">PIZZA YARD</p>
+          <h2>Ready for your next pizza?</h2>
+          <p>Ti Rocher, Castries, Saint Lucia</p>
+        </div>
+        <div class="contact-actions">
+          <a href="tel:7121777">7121777</a>
+          <a href="tel:4603191">4603191</a>
+          <a href="tel:5187562">5187562</a>
+        </div>
+        <a class="btn btn-light" href="#builder">Order Now →</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div><strong>🍕 Pizza Yard</strong><span>Fresh Pizza. Made Your Way.</span></div>
+      <p>© <span id="year"></span> Pizza Yard. Ti Rocher, Castries, Saint Lucia.</p>
+    </div>
+  </footer>
+
+  <div class="modal-backdrop hidden" id="success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title">
+    <div class="success-modal">
+      <button class="modal-close" type="button" id="modal-close" aria-label="Close confirmation">×</button>
+      <div class="success-icon">✓</div>
+      <p class="eyebrow">ORDER CONFIRMED</p>
+      <h2 id="success-title">Order Received! 🍕</h2>
+      <p>Thanks for your order! We've received your request and will contact you shortly to confirm the details.</p>
+      <div class="success-total">
+        <span>Your total</span>
+        <strong id="success-total">$0.00</strong>
+      </div>
+      <div class="tracking-code-wrap">Tracking code <strong id="tracking-code">--------</strong></div>
+      <div class="order-notification-box" id="order-notification-box" aria-live="polite">
+        <div>
+          <strong>🔔 Get order updates</strong>
+          <span id="notification-status">Get a browser notification when your order changes.</span>
+        </div>
+        <button class="btn btn-primary notification-btn" type="button" id="enable-notifications">TURN ON NOTIFICATIONS</button>
+      </div>
+      <div id="order-tracker" class="order-tracker" aria-live="polite"></div><div class="post-order-feedback"><p class="eyebrow">QUICK FEEDBACK</p><h3>How was your Pizza Yard order?</h3><button type="button" class="btn btn-primary" id="post-order-review">⭐ Leave a Review</button></div>
+      <button class="btn btn-primary" type="button" id="another-order">Place Another Order</button>
+    </div>
+  </div>
+</body>
+</html>
