@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public order tracking contains only safe status information.
+    match /public_tracking/{token} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Customers may place orders. Staff accounts can manage them.
+    match /pizza_orders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Breakfast orders follow the same customer-create/staff-manage model.
+    match /breakfast_orders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Approved reviews are public. Staff can moderate.
+    match /pizza_reviews/{reviewId} {
+      allow create: if true;
+      allow read: if resource.data.approved == true || request.auth != null;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Menu availability is public-read and staff-write.
+    match /pizza_topping_availability/{toppingId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Staff-only inventory.
+    match /inventory_items/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /inventory_stock_events/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /inventory_daily_counts/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Rewards are created/updated by the customer flow and managed by staff.
+    match /rewards/{id} {
+      allow read, write: if true;
+    }
+    match /reward_codes/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Internal Firebase adapter IDs are never useful to clients.
+    match /_ids/{id} {
+      allow read, write: if false;
+    }
+
+    // Deny everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

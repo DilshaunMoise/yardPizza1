@@ -1,0 +1,12 @@
+PIZZA YARD — FIREBASE SETUP
+
+1. Firebase project: yardpizza-60872
+2. Web app: Pizza Yard Website
+3. Firestore: already created
+4. Authentication: Email/Password enabled; create the staff user.
+5. Replace Firestore Rules with the contents of firestore.rules and Publish.
+6. No manual collections/fields are required. The website creates documents automatically.
+7. Upload all files in this folder to your web host.
+8. Keep the old Supabase project until Firebase is confirmed working.
+
+The website now loads Firebase App/Auth/Firestore and firebase-adapter.js. The existing Pizza Yard scripts use a compatibility adapter so the customer site, dashboard, staff ordering, breakfast, inventory, reviews, rewards, topping availability, tracking and realtime updates continue using the same front-end logic.
