@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://dsjskpqdofuhkzkylxqt.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_v4Vaxfo6i2Y_E2N24xO0ag_jkprC_Rk";
+const SUPABASE_URL = "https://pqzfmbqmkeythyajkiti.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_p1ugtwfPHsKFmZ8KOQ_fBQ_YCAPYWxn";
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const TOPPINGS=["Corn","Pepperoni","Mushroom","Tuna","Bacon","Ham","Bell Peppers","Sausage","Veg"];
 const ICONS={Corn:"🌽",Pepperoni:"🔴",Mushroom:"🍄",Tuna:"🐟",Bacon:"🥓",Ham:"🍖","Bell Peppers":"🫑",Sausage:"🌭",Veg:"🥦"};

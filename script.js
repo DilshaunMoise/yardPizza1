@@ -48,8 +48,8 @@ const CONFIG = {
   formspreeEndpoint: "https://formspree.io/f/xdenabwa",
 
   // Browser-safe Supabase configuration.
-  supabaseUrl: "https://dsjskpqdofuhkzkylxqt.supabase.co",
-  supabasePublishableKey: "sb_publishable_v4Vaxfo6i2Y_E2N24xO0ag_jkprC_Rk"
+  supabaseUrl: "https://pqzfmbqmkeythyajkiti.supabase.co",
+  supabasePublishableKey: "sb_publishable_p1ugtwfPHsKFmZ8KOQ_fBQ_YCAPYWxn"
 };
 
 // Initialize the browser-safe Supabase client. Never use a service-role key here.

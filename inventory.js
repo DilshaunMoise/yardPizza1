@@ -1,5 +1,5 @@
-const SUPABASE_URL="https://dsjskpqdofuhkzkylxqt.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY="sb_publishable_v4Vaxfo6i2Y_E2N24xO0ag_jkprC_Rk";
+const SUPABASE_URL="https://pqzfmbqmkeythyajkiti.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_p1ugtwfPHsKFmZ8KOQ_fBQ_YCAPYWxn";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={items:[],events:[],counts:[],search:"",category:"",status:""};
