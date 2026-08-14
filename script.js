@@ -1,8 +1,5 @@
 // ============================================================
-// PIZZA YARD — EASY CONFIGURATION
-// ============================================================
-// Browser-safe Supabase configuration + existing Formspree endpoint.
-// Never put a Supabase service-role key or private secrets here.
+// PIZZA YARD — COMPLETE SCRIPT
 // ============================================================
 
 const CONFIG = {
@@ -45,10 +42,16 @@ const CONFIG = {
   formspreeEndpoint: "https://formspree.io/f/xdenabwa",
 
   supabaseUrl: "https://pqzfmbqmkeythyajkiti.supabase.co",
-  supabasePublishableKey: "sb_publishable_p1ugtwfPHsKFmZ8KOQ_fBQ_YCAPYWxn"
+
+  supabasePublishableKey:
+    "sb_publishable_p1ugtwfPHsKFmZ8KOQ_fBQ_YCAPYWxn"
 };
 
-// Initialize Supabase
+
+// ============================================================
+// SUPABASE
+// ============================================================
+
 if (
   window.supabase &&
   CONFIG.supabaseUrl &&
@@ -59,6 +62,11 @@ if (
     CONFIG.supabasePublishableKey
   );
 }
+
+
+// ============================================================
+// TOPPING ICONS
+// ============================================================
 
 const TOPPING_ICONS = {
   "Corn": "🌽",
@@ -72,46 +80,109 @@ const TOPPING_ICONS = {
   "Veg": "🥦"
 };
 
+
+// ============================================================
+// STATE
+// ============================================================
+
 const state = {
   selectedToppings: [],
   quantity: 1,
   orderType: "pickup",
   submitting: false,
+
   trackingToken: null,
   trackingChannel: null,
   trackingPoll: null,
   lastTrackedStatus: null,
+
   notificationPermission: null,
+
   pizzaMode: "whole",
+
   leftToppings: [],
   rightToppings: [],
+
   toppingAvailability: {},
+
   cart: []
 };
 
+
+// ============================================================
+// HELPERS
+// ============================================================
+
 const $ = (selector) => document.querySelector(selector);
+
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function money(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function esc(value) {
+  return escapeHtml(value);
+}
+
+function normalizeSaintLuciaPhone(value) {
+  return String(value || "").replace(/[\s()-]/g, "");
+}
+
+function isValidPhone(value) {
+  const normalized = normalizeSaintLuciaPhone(value);
+  return /^\d{7}$/.test(normalized);
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    String(value || "").trim()
+  );
+}
+
+
+// ============================================================
+// ELEMENTS
+// ============================================================
 
 const elements = {
   form: $("#order-form"),
+
   toppingGrid: $("#topping-grid"),
   cheesePizza: $("#cheese-pizza"),
+
   selectedCount: $("#selected-count"),
+
   qtyMinus: $("#qty-minus"),
   qtyPlus: $("#qty-plus"),
   quantityOutput: $("#quantity-output"),
+
   orderTypeInputs: $$('input[name="orderType"]'),
+
   deliveryWarning: $("#delivery-warning"),
   addressWrap: $("#address-wrap"),
   address: $("#delivery-address"),
+
   toppingsError: $("#toppings-error"),
   addressError: $("#address-error"),
+
   name: $("#full-name"),
   phone: $("#phone"),
   email: $("#email"),
   instructions: $("#instructions"),
+
   submissionError: $("#submission-error"),
   placeOrder: $("#place-order"),
+
   summaryToppingCount: $("#summary-topping-count"),
   summaryToppingsList: $("#summary-toppings-list"),
   summaryBase: $("#summary-base"),
@@ -122,25 +193,33 @@ const elements = {
   summaryDelivery: $("#summary-delivery"),
   summaryTotal: $("#summary-total"),
   deliverySummary: $("#delivery-summary"),
+
   successModal: $("#success-modal"),
   successTotal: $("#success-total"),
+
   anotherOrder: $("#another-order"),
   modalClose: $("#modal-close"),
+
   year: $("#year"),
+
   navToggle: $(".nav-toggle"),
   navMenu: $("#nav-menu"),
+
   wholeBuilder: $("#whole-builder"),
   halfBuilder: $("#half-builder"),
+
   cartList: $("#pizza-cart-list"),
   addAnotherPizza: $("#add-another-pizza"),
   cartCount: $("#pizza-cart-count"),
+
   leftToppingGrid: $("#left-topping-grid"),
   rightToppingGrid: $("#right-topping-grid")
 };
 
-function money(value) {
-  return `$${Number(value).toFixed(2)}`;
-}
+
+// ============================================================
+// PIZZA CALCULATIONS
+// ============================================================
 
 function uniqueToppings() {
   return [
@@ -166,110 +245,142 @@ function calculatePizzaUnitPrice(toppingCount) {
     Math.max(
       0,
       toppingCount - CONFIG.pizza.includedToppings
-    ) * CONFIG.pizza.extraToppingPrice
+    ) *
+      CONFIG.pizza.extraToppingPrice
   );
 }
 
 function currentPizzaSnapshot() {
   const toppingCount = uniqueToppings().length;
-  const unitPrice = calculatePizzaUnitPrice(toppingCount);
+
+  const unitPrice =
+    calculatePizzaUnitPrice(toppingCount);
+
   const includedToppings = Math.min(
     toppingCount,
     CONFIG.pizza.includedToppings
   );
+
   const extraToppings = Math.max(
     0,
     toppingCount - CONFIG.pizza.includedToppings
   );
+
   const extraToppingCost =
     extraToppings * CONFIG.pizza.extraToppingPrice;
 
   return {
     mode: state.pizzaMode,
+
     toppings: [...state.selectedToppings],
+
     left: [...state.leftToppings],
+
     right: [...state.rightToppings],
+
     quantity: state.quantity,
+
     toppingCount,
+
     unitPrice,
+
     includedToppings,
+
     extraToppings,
+
     extraToppingCost
   };
 }
 
 function pizzaLabel(pizza, index) {
   if (pizza.mode === "half") {
-    return `Pizza ${index + 1}: Left — ${
-      pizza.left.length ? pizza.left.join(", ") : "Cheese"
-    } | Right — ${
-      pizza.right.length ? pizza.right.join(", ") : "Cheese"
-    }`;
+    return (
+      `Pizza ${index + 1}: ` +
+      `Left — ${
+        pizza.left.length
+          ? pizza.left.join(", ")
+          : "Cheese"
+      } | ` +
+      `Right — ${
+        pizza.right.length
+          ? pizza.right.join(", ")
+          : "Cheese"
+      }`
+    );
   }
 
-  return `Pizza ${index + 1}: ${
-    pizza.toppings.length
-      ? pizza.toppings.join(", ")
-      : "Cheese Pizza"
-  }`;
+  return (
+    `Pizza ${index + 1}: ` +
+    `${
+      pizza.toppings.length
+        ? pizza.toppings.join(", ")
+        : "Cheese Pizza"
+    }`
+  );
 }
 
 function cartBoxes() {
   return (
     state.cart.reduce(
-      (sum, p) => sum + Number(p.quantity || 1),
+      (sum, pizza) =>
+        sum + Number(pizza.quantity || 1),
       0
-    ) + Number(state.quantity || 1)
+    ) +
+    Number(state.quantity || 1)
   );
 }
 
 function calculateOrder() {
   const current = currentPizzaSnapshot();
-  const pizzas = [...state.cart, current];
+
+  const pizzas = [
+    ...state.cart,
+    current
+  ];
 
   const pizzasSubtotal = pizzas.reduce(
-    (sum, p) =>
+    (sum, pizza) =>
       sum +
-      Number(p.unitPrice) *
-        Number(p.quantity || 1),
+      Number(pizza.unitPrice || 0) *
+        Number(pizza.quantity || 1),
     0
   );
 
   const totalToppingCount = pizzas.reduce(
-    (sum, p) =>
+    (sum, pizza) =>
       sum +
-      Number(p.toppingCount || 0) *
-        Number(p.quantity || 1),
+      Number(pizza.toppingCount || 0) *
+        Number(pizza.quantity || 1),
     0
   );
 
   const includedToppings = pizzas.reduce(
-    (sum, p) =>
+    (sum, pizza) =>
       sum +
-      Number(p.includedToppings || 0) *
-        Number(p.quantity || 1),
+      Number(pizza.includedToppings || 0) *
+        Number(pizza.quantity || 1),
     0
   );
 
   const extraToppings = pizzas.reduce(
-    (sum, p) =>
+    (sum, pizza) =>
       sum +
-      Number(p.extraToppings || 0) *
-        Number(p.quantity || 1),
+      Number(pizza.extraToppings || 0) *
+        Number(pizza.quantity || 1),
     0
   );
 
   const extraToppingCost = pizzas.reduce(
-    (sum, p) =>
+    (sum, pizza) =>
       sum +
-      Number(p.extraToppingCost || 0) *
-        Number(p.quantity || 1),
+      Number(pizza.extraToppingCost || 0) *
+        Number(pizza.quantity || 1),
     0
   );
 
   const boxes = pizzas.reduce(
-    (sum, p) =>
-      sum + Number(p.quantity || 1),
+    (sum, pizza) =>
+      sum + Number(pizza.quantity || 1),
     0
   );
 
@@ -281,32 +392,51 @@ function calculateOrder() {
 
   return {
     toppingCount: totalToppingCount,
+
     unitPrice: current.unitPrice,
+
     includedToppings,
+
     extraToppings,
+
     extraToppingCost,
+
     pizzasSubtotal,
+
     deliveryFee,
-    total: pizzasSubtotal + deliveryFee,
+
+    total:
+      pizzasSubtotal + deliveryFee,
+
     boxes,
+
     pizzas
   };
 }
+
+
+// ============================================================
+// TOPPING UI
+// ============================================================
 
 function toppingButton(
   topping,
   selected,
   clickHandler
 ) {
-  const button = document.createElement("button");
+  const button =
+    document.createElement("button");
 
   button.type = "button";
-  button.className = "topping-option";
+
+  button.className =
+    "topping-option";
 
   const available =
     state.toppingAvailability[topping] !== false;
 
   button.disabled = !available;
+
   button.classList.toggle(
     "sold-out",
     !available
@@ -317,20 +447,17 @@ function toppingButton(
     String(selected)
   );
 
-  button.innerHTML = `
-    <span class="topping-visual" aria-hidden="true">
-      ${TOPPING_ICONS[topping] || "🍕"}
-    </span>
-    <span>${escapeHtml(topping)}</span>
-    ${
+  button.innerHTML =
+    `<span class="topping-visual" aria-hidden="true">` +
+    `${TOPPING_ICONS[topping] || "🍕"}` +
+    `</span>` +
+    `<span>${escapeHtml(topping)}</span>` +
+    `${
       available
         ? ""
         : "<small>SOLD OUT</small>"
-    }
-    <span class="topping-check" aria-hidden="true">
-      ✓
-    </span>
-  `;
+    }` +
+    `<span class="topping-check" aria-hidden="true">✓</span>`;
 
   if (selected) {
     button.classList.add("selected");
@@ -361,6 +488,7 @@ function renderToppingGrid(
       document.createElement("button");
 
     cheese.type = "button";
+
     cheese.className =
       "topping-option cheese-option";
 
@@ -369,20 +497,13 @@ function renderToppingGrid(
       String(selected.length === 0)
     );
 
-    cheese.innerHTML = `
-      <span class="topping-visual" aria-hidden="true">
-        🧀
-      </span>
-      <span>Cheese Pizza</span>
-      <small>
-        12" • ${money(
-          CONFIG.pizza.cheesePizzaPrice
-        )}
-      </small>
-      <span class="topping-check" aria-hidden="true">
-        ✓
-      </span>
-    `;
+    cheese.innerHTML =
+      `<span class="topping-visual" aria-hidden="true">🧀</span>` +
+      `<span>Cheese Pizza</span>` +
+      `<small>12" • ${money(
+        CONFIG.pizza.cheesePizzaPrice
+      )}</small>` +
+      `<span class="topping-check" aria-hidden="true">✓</span>`;
 
     if (selected.length === 0) {
       cheese.classList.add("selected");
@@ -416,9 +537,11 @@ function renderToppings() {
         state.selectedToppings = [];
       } else {
         state.selectedToppings =
-          state.selectedToppings.includes(topping)
+          state.selectedToppings.includes(
+            topping
+          )
             ? state.selectedToppings.filter(
-                (x) => x !== topping
+                (item) => item !== topping
               )
             : [
                 ...state.selectedToppings,
@@ -426,7 +549,10 @@ function renderToppings() {
               ];
       }
 
-      elements.toppingsError.textContent = "";
+      if (elements.toppingsError) {
+        elements.toppingsError.textContent =
+          "";
+      }
 
       renderToppings();
       updateUI();
@@ -444,7 +570,7 @@ function renderToppings() {
         state.leftToppings =
           state.leftToppings.includes(topping)
             ? state.leftToppings.filter(
-                (x) => x !== topping
+                (item) => item !== topping
               )
             : [
                 ...state.leftToppings,
@@ -452,7 +578,10 @@ function renderToppings() {
               ];
       }
 
-      elements.toppingsError.textContent = "";
+      if (elements.toppingsError) {
+        elements.toppingsError.textContent =
+          "";
+      }
 
       renderToppings();
       updateUI();
@@ -469,7 +598,7 @@ function renderToppings() {
         state.rightToppings =
           state.rightToppings.includes(topping)
             ? state.rightToppings.filter(
-                (x) => x !== topping
+                (item) => item !== topping
               )
             : [
                 ...state.rightToppings,
@@ -477,7 +606,10 @@ function renderToppings() {
               ];
       }
 
-      elements.toppingsError.textContent = "";
+      if (elements.toppingsError) {
+        elements.toppingsError.textContent =
+          "";
+      }
 
       renderToppings();
       updateUI();
@@ -498,12 +630,15 @@ function renderToppings() {
     );
   }
 
-  $$(".pizza-mode-btn").forEach((btn) => {
-    btn.classList.toggle(
-      "active",
-      btn.dataset.mode === state.pizzaMode
-    );
-  });
+  $$(".pizza-mode-btn").forEach(
+    (button) => {
+      button.classList.toggle(
+        "active",
+        button.dataset.mode ===
+          state.pizzaMode
+      );
+    }
+  );
 }
 
 function toggleTopping(topping) {
@@ -517,11 +652,19 @@ function toggleTopping(topping) {
           topping
         ];
 
-  elements.toppingsError.textContent = "";
+  if (elements.toppingsError) {
+    elements.toppingsError.textContent =
+      "";
+  }
 
   renderToppings();
   updateUI();
 }
+
+
+// ============================================================
+// QUANTITY / ORDER TYPE
+// ============================================================
 
 function updateQuantity(nextQuantity) {
   state.quantity = Math.max(
@@ -532,6 +675,7 @@ function updateQuantity(nextQuantity) {
   if (elements.quantityOutput) {
     elements.quantityOutput.value =
       state.quantity;
+
     elements.quantityOutput.textContent =
       state.quantity;
   }
@@ -546,9 +690,10 @@ function updateOrderType() {
       (input) => input.checked
     );
 
-  state.orderType = selected
-    ? selected.value
-    : "pickup";
+  state.orderType =
+    selected
+      ? selected.value
+      : "pickup";
 
   updateDeliveryUI();
   updateUI();
@@ -562,17 +707,19 @@ function updateDeliveryUI() {
     cartBoxes() >=
     CONFIG.delivery.minimumBoxes;
 
-  $$(".type-option").forEach((label) => {
-    const input =
-      label.querySelector("input");
+  $$(".type-option").forEach(
+    (label) => {
+      const input =
+        label.querySelector("input");
 
-    if (input) {
-      label.classList.toggle(
-        "selected",
-        input.checked
-      );
+      if (input) {
+        label.classList.toggle(
+          "selected",
+          input.checked
+        );
+      }
     }
-  });
+  );
 
   if (elements.addressWrap) {
     elements.addressWrap.classList.toggle(
@@ -602,35 +749,44 @@ function updateDeliveryUI() {
   }
 
   if (!isDelivery && elements.addressError) {
-    elements.addressError.textContent = "";
+    elements.addressError.textContent =
+      "";
   }
 }
 
+
+// ============================================================
+// CART
+// ============================================================
+
 function renderPizzaCart() {
-  if (!elements.cartList) return;
+  if (!elements.cartList) {
+    return;
+  }
 
   const items = state.cart;
 
   elements.cartList.innerHTML =
     items.length
       ? items
-          .map((p, i) => {
+          .map((pizza, index) => {
             const label =
-              pizzaLabel(p, i);
+              pizzaLabel(
+                pizza,
+                index
+              );
 
             return `
               <div class="pizza-cart-item">
                 <div>
-                  <strong>
-                    🍕 ${escapeHtml(label)}
-                  </strong>
+                  <strong>🍕 ${escapeHtml(label)}</strong>
                   <small>
-                    ${p.quantity}
-                    box${p.quantity === 1 ? "" : "es"}
+                    ${pizza.quantity}
+                    box${pizza.quantity === 1 ? "" : "es"}
                     •
                     ${money(
-                      p.unitPrice *
-                        p.quantity
+                      pizza.unitPrice *
+                        pizza.quantity
                     )}
                   </small>
                 </div>
@@ -638,8 +794,8 @@ function renderPizzaCart() {
                 <button
                   type="button"
                   class="cart-remove"
-                  data-cart-index="${i}"
-                  aria-label="Remove pizza ${i + 1}"
+                  data-cart-index="${index}"
+                  aria-label="Remove pizza ${index + 1}"
                 >
                   Remove
                 </button>
@@ -647,12 +803,8 @@ function renderPizzaCart() {
             `;
           })
           .join("")
-      : `
-        <p class="muted">
-          No additional pizzas yet.
-          Build your first pizza above.
-        </p>
-      `;
+      :
+        '<p class="muted">No additional pizzas yet. Build your first pizza above.</p>';
 
   if (elements.cartCount) {
     elements.cartCount.textContent =
@@ -660,13 +812,17 @@ function renderPizzaCart() {
   }
 
   elements.cartList
-    .querySelectorAll(".cart-remove")
-    .forEach((btn) => {
-      btn.addEventListener(
+    .querySelectorAll(
+      ".cart-remove"
+    )
+    .forEach((button) => {
+      button.addEventListener(
         "click",
         () => {
           state.cart.splice(
-            Number(btn.dataset.cartIndex),
+            Number(
+              button.dataset.cartIndex
+            ),
             1
           );
 
@@ -678,8 +834,14 @@ function renderPizzaCart() {
     });
 }
 
+
+// ============================================================
+// MAIN UI
+// ============================================================
+
 function updateUI() {
-  const order = calculateOrder();
+  const order =
+    calculateOrder();
 
   if (elements.selectedCount) {
     elements.selectedCount.textContent =
@@ -699,67 +861,58 @@ function updateUI() {
       }`;
   }
 
-  if (order.pizzas.length > 1) {
-    elements.summaryToppingsList.innerHTML =
-      order.pizzas
-        .map(
-          (p, i) => `
-            <span class="summary-chip">
-              ${escapeHtml(
-                pizzaLabel(p, i)
-              )}
-              ${
-                p.quantity > 1
-                  ? ` ×${p.quantity}`
-                  : ""
-              }
-            </span>
-          `
-        )
-        .join("");
-  } else if (
-    state.pizzaMode === "half"
+  if (
+    elements.summaryToppingsList
   ) {
-    elements.summaryToppingsList.innerHTML = `
-      <span class="summary-chip">
-        Left:
-        ${
+    if (order.pizzas.length > 1) {
+      elements.summaryToppingsList.innerHTML =
+        order.pizzas
+          .map(
+            (pizza, index) =>
+              `<span class="summary-chip">${escapeHtml(
+                pizzaLabel(
+                  pizza,
+                  index
+                )
+              )}${
+                pizza.quantity > 1
+                  ? ` ×${pizza.quantity}`
+                  : ""
+              }</span>`
+          )
+          .join("");
+    } else if (
+      state.pizzaMode === "half"
+    ) {
+      elements.summaryToppingsList.innerHTML =
+        `<span class="summary-chip">Left: ${
           state.leftToppings.length
             ? state.leftToppings
                 .map(escapeHtml)
                 .join(", ")
             : "Cheese"
-        }
-      </span>
-
-      <span class="summary-chip">
-        Right:
-        ${
+        }</span>` +
+        `<span class="summary-chip">Right: ${
           state.rightToppings.length
             ? state.rightToppings
                 .map(escapeHtml)
                 .join(", ")
             : "Cheese"
-        }
-      </span>
-    `;
-  } else {
-    elements.summaryToppingsList.innerHTML =
-      state.selectedToppings.length
-        ? state.selectedToppings
-            .map(
-              (t) => `
-                <span class="summary-chip">
-                  ${escapeHtml(t)}
-                </span>
-              `
-            )
-            .join("")
-        : `
-          <span class="summary-chip">
-            Cheese Pizza
-          </span>
-        `;
+        }</span>`;
+    } else {
+      elements.summaryToppingsList.innerHTML =
+        state.selectedToppings.length
+          ? state.selectedToppings
+              .map(
+                (topping) =>
+                  `<span class="summary-chip">${escapeHtml(
+                    topping
+                  )}</span>`
+              )
+              .join("")
+          :
+            '<span class="summary-chip">Cheese Pizza</span>';
+    }
   }
 
   if (elements.summaryBase) {
@@ -805,12 +958,19 @@ function updateUI() {
           ? `Delivery fee: ${money(
               order.deliveryFee
             )}.`
-          : `Delivery requires ${CONFIG.delivery.minimumBoxes} boxes. You currently have ${order.boxes}.`
-        : "Pickup selected — no delivery fee.";
+          :
+            `Delivery requires ${CONFIG.delivery.minimumBoxes} boxes. You currently have ${order.boxes}.`
+        :
+          "Pickup selected — no delivery fee.";
   }
 
   renderPizzaCart();
 }
+
+
+// ============================================================
+// ADD ANOTHER PIZZA
+// ============================================================
 
 function addCurrentPizza() {
   if (
@@ -820,8 +980,10 @@ function addCurrentPizza() {
       !state.rightToppings.length
     )
   ) {
-    elements.toppingsError.textContent =
-      "Choose at least one topping on each half, or switch back to Whole Pizza.";
+    if (elements.toppingsError) {
+      elements.toppingsError.textContent =
+        "Choose at least one topping on each half, or switch back to Whole Pizza.";
+    }
 
     return;
   }
@@ -833,6 +995,7 @@ function addCurrentPizza() {
   state.selectedToppings = [];
   state.leftToppings = [];
   state.rightToppings = [];
+
   state.pizzaMode = "whole";
   state.quantity = 1;
 
@@ -841,7 +1004,10 @@ function addCurrentPizza() {
     elements.quantityOutput.textContent = 1;
   }
 
-  elements.toppingsError.textContent = "";
+  if (elements.toppingsError) {
+    elements.toppingsError.textContent =
+      "";
+  }
 
   renderToppings();
   updateDeliveryUI();
@@ -855,65 +1021,47 @@ function addCurrentPizza() {
     });
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
-}
 
-function esc(value) {
-  return escapeHtml(value);
-}
-
-function normalizeSaintLuciaPhone(value) {
-  return String(value).replace(
-    /[\s()-]/g,
-    ""
-  );
-}
-
-function isValidPhone(value) {
-  const normalized =
-    normalizeSaintLuciaPhone(value);
-
-  return /^\d{7}$/.test(
-    normalized
-  );
-}
-
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-    String(value).trim()
-  );
-}
+// ============================================================
+// VALIDATION
+// ============================================================
 
 function clearErrors() {
   if (elements.toppingsError) {
-    elements.toppingsError.textContent = "";
+    elements.toppingsError.textContent =
+      "";
   }
 
   if (elements.addressError) {
-    elements.addressError.textContent = "";
+    elements.addressError.textContent =
+      "";
   }
 
   if (elements.submissionError) {
-    elements.submissionError.textContent = "";
+    elements.submissionError.textContent =
+      "";
   }
 
-  $("#name-error") &&
-    ($("#name-error").textContent = "");
+  const nameError =
+    $("#name-error");
 
-  $("#phone-error") &&
-    ($("#phone-error").textContent = "");
+  const phoneError =
+    $("#phone-error");
 
-  $("#email-error") &&
-    ($("#email-error").textContent = "");
+  const emailError =
+    $("#email-error");
+
+  if (nameError) {
+    nameError.textContent = "";
+  }
+
+  if (phoneError) {
+    phoneError.textContent = "";
+  }
+
+  if (emailError) {
+    emailError.textContent = "";
+  }
 }
 
 function validateForm() {
@@ -922,33 +1070,55 @@ function validateForm() {
   let valid = true;
 
   const fullName =
-    elements.name.value.trim();
+    elements.name
+      ? elements.name.value.trim()
+      : "";
 
+  /*
+   * Keep the existing required customer fields.
+   */
   if (!fullName) {
-    $("#name-error").textContent =
-      "Please enter your full name.";
+    const error =
+      $("#name-error");
+
+    if (error) {
+      error.textContent =
+        "Please enter your full name.";
+    }
 
     valid = false;
   }
 
   if (
+    !elements.phone ||
     !isValidPhone(
       elements.phone.value
     )
   ) {
-    $("#phone-error").textContent =
-      "Enter a valid Saint Lucia phone number, e.g. 7121777.";
+    const error =
+      $("#phone-error");
+
+    if (error) {
+      error.textContent =
+        "Enter a valid Saint Lucia phone number, e.g. 7121777.";
+    }
 
     valid = false;
   }
 
   if (
+    !elements.email ||
     !isValidEmail(
       elements.email.value
     )
   ) {
-    $("#email-error").textContent =
-      "Please enter a valid email address.";
+    const error =
+      $("#email-error");
+
+    if (error) {
+      error.textContent =
+        "Please enter a valid email address.";
+    }
 
     valid = false;
   }
@@ -960,31 +1130,41 @@ function validateForm() {
       !state.rightToppings.length
     )
   ) {
-    elements.toppingsError.textContent =
-      "Choose at least one topping on each half, or switch back to Whole Pizza.";
+    if (elements.toppingsError) {
+      elements.toppingsError.textContent =
+        "Choose at least one topping on each half, or switch back to Whole Pizza.";
+    }
 
     valid = false;
   }
 
   if (
-    state.orderType === "delivery"
+    state.orderType ===
+    "delivery"
   ) {
     if (
       cartBoxes() <
       CONFIG.delivery.minimumBoxes
     ) {
-      elements.deliveryWarning.classList.add(
-        "visible"
-      );
+      if (
+        elements.deliveryWarning
+      ) {
+        elements.deliveryWarning.classList.add(
+          "visible"
+        );
+      }
 
       valid = false;
     }
 
     if (
+      !elements.address ||
       !elements.address.value.trim()
     ) {
-      elements.addressError.textContent =
-        "Delivery address is required.";
+      if (elements.addressError) {
+        elements.addressError.textContent =
+          "Delivery address is required.";
+      }
 
       valid = false;
     }
@@ -993,45 +1173,74 @@ function validateForm() {
   return valid;
 }
 
+
+// ============================================================
+// ORDER DETAILS
+// ============================================================
+
 function buildOrderDetails() {
   const order =
     calculateOrder();
 
   const customerName =
-    elements.name.value.trim();
+    elements.name
+      ? elements.name.value.trim()
+      : "";
 
   const customerPhone =
-    normalizeSaintLuciaPhone(
-      elements.phone.value
-    );
+    elements.phone
+      ? normalizeSaintLuciaPhone(
+          elements.phone.value
+        )
+      : "";
 
   const customerEmail =
-    elements.email.value.trim();
+    elements.email
+      ? elements.email.value.trim()
+      : "";
 
   const address =
-    elements.address.value.trim();
+    elements.address
+      ? elements.address.value.trim()
+      : "";
 
   const instructions =
-    elements.instructions.value.trim();
+    elements.instructions
+      ? elements.instructions.value.trim()
+      : "";
 
   return {
     customerName,
     customerPhone,
     customerEmail,
-    orderType: state.orderType,
+
+    orderType:
+      state.orderType,
+
     address,
+
     instructions,
+
     ...order,
-    pizzas: order.pizzas
+
+    pizzas:
+      order.pizzas
   };
 }
+
+
+// ============================================================
+// EMAIL BODY
+// ============================================================
 
 function buildEmailBody(details) {
   const pizzaLines =
     details.pizzas
       .map(
-        (pizza, i) =>
-          `Pizza ${i + 1} (${pizza.quantity} box${
+        (pizza, index) =>
+          `Pizza ${index + 1} (${
+            pizza.quantity
+          } box${
             pizza.quantity === 1
               ? ""
               : "es"
@@ -1044,7 +1253,8 @@ function buildEmailBody(details) {
                   pizza.right.join(", ") ||
                   "Cheese"
                 }`
-              : (
+              :
+                (
                   pizza.toppings.join(", ") ||
                   "Cheese Pizza"
                 )
@@ -1058,64 +1268,107 @@ function buildEmailBody(details) {
   return [
     "NEW PIZZA ORDER 🍕",
     "",
+
     "BUSINESS",
     `Business: ${CONFIG.businessName}`,
     `Location: ${CONFIG.location}`,
     "",
+
     "CUSTOMER",
     `Name: ${details.customerName}`,
     `Phone: ${details.customerPhone}`,
     `Email: ${details.customerEmail}`,
     "",
+
     "ORDER",
     `Total pizzas/boxes: ${details.boxes}`,
+
     pizzaLines,
+
     `Order type: ${
       state.orderType === "delivery"
         ? "Delivery"
         : "Pickup"
     }`,
+
     `Delivery fee: ${money(
       details.deliveryFee
     )}`,
+
     ...(state.orderType ===
     "delivery"
       ? [
           `Delivery address: ${details.address}`
         ]
       : []),
+
     `Special instructions: ${
-      details.instructions || "None"
+      details.instructions ||
+      "None"
     }`,
+
     "",
-    `TOTAL: ${money(details.total)}`
+
+    `TOTAL: ${money(
+      details.total
+    )}`
   ].join("\n");
 }
 
+
 // ============================================================
-// SUPABASE ORDER SAVE
+// SUBMITTING STATE
 // ============================================================
-// IMPORTANT:
-// The pizza_orders table does NOT have an order_details column.
-// Therefore order_details is intentionally NOT included in the
-// Supabase payload.
-//
-// The Formspree backup still receives the complete order_details
-// text separately.
+
+function setSubmitting(
+  isSubmitting
+) {
+  state.submitting =
+    isSubmitting;
+
+  if (elements.form) {
+    elements.form.classList.toggle(
+      "is-submitting",
+      isSubmitting
+    );
+  }
+
+  if (elements.placeOrder) {
+    elements.placeOrder.disabled =
+      isSubmitting;
+  }
+}
+
+
+// ============================================================
+// TRACKING TOKEN
 // ============================================================
 
 function createTrackingToken() {
   const bytes =
     new Uint8Array(18);
 
-  crypto.getRandomValues(bytes);
+  crypto.getRandomValues(
+    bytes
+  );
 
   return Array.from(
     bytes,
-    (b) =>
-      b.toString(16).padStart(2, "0")
+    (byte) =>
+      byte
+        .toString(16)
+        .padStart(2, "0")
   ).join("");
 }
+
+
+// ============================================================
+// SAVE ORDER TO SUPABASE
+// ============================================================
+// IMPORTANT:
+// There is NO "order_details" field here.
+// The current pizza_orders table does not have that column.
+// ============================================================
 
 async function saveOrderToSupabase(
   details
@@ -1131,8 +1384,11 @@ async function saveOrderToSupabase(
 
   const toppingsSummary =
     details.pizzas.map(
-      (p, i) =>
-        pizzaLabel(p, i)
+      (pizza, index) =>
+        pizzaLabel(
+          pizza,
+          index
+        )
     );
 
   const payload = {
@@ -1199,7 +1455,7 @@ async function saveOrderToSupabase(
   };
 
   console.log(
-    "Pizza Yard Supabase order payload:",
+    "Pizza Yard order being saved:",
     payload
   );
 
@@ -1210,7 +1466,8 @@ async function saveOrderToSupabase(
     await window.pizzaYardSupabase
       .from("pizza_orders")
       .insert(payload)
-      .select();
+      .select()
+      .single();
 
   if (error) {
     console.error(
@@ -1235,6 +1492,11 @@ async function saveOrderToSupabase(
 
   return state.trackingToken;
 }
+
+
+// ============================================================
+// FORMSPREE BACKUP
+// ============================================================
 
 async function sendFormspreeBackup(
   details
@@ -1292,8 +1554,11 @@ async function sendFormspreeBackup(
     "toppings",
     details.pizzas
       .map(
-        (p, i) =>
-          pizzaLabel(p, i)
+        (pizza, index) =>
+          pizzaLabel(
+            pizza,
+            index
+          )
       )
       .join("\n")
   );
@@ -1307,12 +1572,16 @@ async function sendFormspreeBackup(
 
   formData.append(
     "quantity",
-    String(details.boxes)
+    String(
+      details.boxes
+    )
   );
 
   formData.append(
     "delivery_fee",
-    money(details.deliveryFee)
+    money(
+      details.deliveryFee
+    )
   );
 
   formData.append(
@@ -1323,12 +1592,11 @@ async function sendFormspreeBackup(
 
   formData.append(
     "total",
-    money(details.total)
+    money(
+      details.total
+    )
   );
 
-  // This is Formspree only.
-  // It does NOT require an order_details
-  // column in Supabase.
   formData.append(
     "order_details",
     body
@@ -1339,7 +1607,9 @@ async function sendFormspreeBackup(
       CONFIG.formspreeEndpoint,
       {
         method: "POST",
+
         body: formData,
+
         headers: {
           Accept:
             "application/json"
@@ -1356,6 +1626,11 @@ async function sendFormspreeBackup(
   return true;
 }
 
+
+// ============================================================
+// COMPLETE ORDER SUBMISSION
+// ============================================================
+
 async function submitOrder(
   details
 ) {
@@ -1369,8 +1644,15 @@ async function submitOrder(
     );
   }
 
-  // Supabase is the source of truth.
-  // Formspree is only a backup notification.
+  /*
+   * Supabase is the source of truth.
+   *
+   * Formspree is only the backup notification.
+   *
+   * If Formspree fails after the order is
+   * successfully inserted into Supabase,
+   * the customer must NOT resubmit.
+   */
 
   const savedOrder =
     await saveOrderToSupabase(
@@ -1391,6 +1673,7 @@ async function submitOrder(
   return savedOrder;
 }
 
+
 // ============================================================
 // ORDER TRACKING
 // ============================================================
@@ -1403,6 +1686,7 @@ const TRACKING_STEPS = [
     message:
       "We've received your order."
   },
+
   {
     key: "preparing",
     label: "Preparing",
@@ -1410,6 +1694,7 @@ const TRACKING_STEPS = [
     message:
       "Our kitchen is preparing your pizza."
   },
+
   {
     key: "in_oven",
     label: "In the Oven",
@@ -1417,6 +1702,7 @@ const TRACKING_STEPS = [
     message:
       "Your pizza is cooking now."
   },
+
   {
     key: "ready",
     label: "Ready",
@@ -1424,6 +1710,7 @@ const TRACKING_STEPS = [
     message:
       "Your pizza is ready for pickup or delivery."
   },
+
   {
     key: "completed",
     label: "Completed",
@@ -1433,9 +1720,11 @@ const TRACKING_STEPS = [
   }
 ];
 
+
 const ORDER_NOTIFICATION_MESSAGES = {
   new: {
-    title: "Order Received 🍕",
+    title:
+      "Order Received 🍕",
     body:
       "We've received your Pizza Yard order."
   },
@@ -1476,20 +1765,28 @@ const ORDER_NOTIFICATION_MESSAGES = {
   }
 };
 
+
+// ============================================================
+// BROWSER NOTIFICATIONS
+// ============================================================
+
 function updateNotificationUI() {
-  const btn =
+  const button =
     $("#enable-notifications");
 
   const status =
     $("#notification-status");
 
-  if (!btn || !status) {
+  if (!button || !status) {
     return;
   }
 
-  if (!("Notification" in window)) {
-    btn.disabled = true;
-    btn.textContent =
+  if (
+    !("Notification" in window)
+  ) {
+    button.disabled = true;
+
+    button.textContent =
       "NOT SUPPORTED";
 
     status.textContent =
@@ -1505,10 +1802,10 @@ function updateNotificationUI() {
     Notification.permission ===
     "granted"
   ) {
-    btn.textContent =
+    button.textContent =
       "🔔 NOTIFICATIONS ON";
 
-    btn.disabled = true;
+    button.disabled = true;
 
     status.textContent =
       "You'll be notified when your order status changes.";
@@ -1516,17 +1813,17 @@ function updateNotificationUI() {
     Notification.permission ===
     "denied"
   ) {
-    btn.textContent =
+    button.textContent =
       "NOTIFICATIONS BLOCKED";
 
-    btn.disabled = true;
+    button.disabled = true;
 
     status.textContent =
       "Notifications are blocked in your browser settings.";
   } else {
-    btn.disabled = false;
+    button.disabled = false;
 
-    btn.textContent =
+    button.textContent =
       "TURN ON NOTIFICATIONS";
 
     status.textContent =
@@ -1535,7 +1832,9 @@ function updateNotificationUI() {
 }
 
 async function enableOrderNotifications() {
-  if (!("Notification" in window)) {
+  if (
+    !("Notification" in window)
+  ) {
     updateNotificationUI();
     return;
   }
@@ -1564,8 +1863,8 @@ async function enableOrderNotifications() {
           }
         );
 
-      notification.onclick = () =>
-        window.focus();
+      notification.onclick =
+        () => window.focus();
     }
   } catch (error) {
     console.warn(
@@ -1600,17 +1899,21 @@ function notifyOrderStatus(
       new Notification(
         `Pizza Yard • ${message.title}`,
         {
-          body: message.body,
+          body:
+            message.body,
+
           tag:
             `pizza-yard-order-${state.trackingToken}-${status}`,
+
           renotify: true
         }
       );
 
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
+    notification.onclick =
+      () => {
+        window.focus();
+        notification.close();
+      };
   } catch (error) {
     console.warn(
       "Could not show order notification:",
@@ -1619,20 +1922,30 @@ function notifyOrderStatus(
   }
 }
 
+
+// ============================================================
+// TRACKER UI
+// ============================================================
+
 function trackerStepIndex(
   status
 ) {
-  if (status === "cancelled") {
+  if (
+    status ===
+    "cancelled"
+  ) {
     return -1;
   }
 
-  const i =
+  const index =
     TRACKING_STEPS.findIndex(
       (step) =>
         step.key === status
     );
 
-  return i < 0 ? 0 : i;
+  return index < 0
+    ? 0
+    : index;
 }
 
 function renderTracker(
@@ -1646,13 +1959,14 @@ function renderTracker(
     return;
   }
 
-  if (status === "cancelled") {
+  if (
+    status ===
+    "cancelled"
+  ) {
     wrap.innerHTML = `
       <div class="tracker-cancelled">
         <strong>Order cancelled</strong>
-        <span>
-          Please contact Pizza Yard if you need help with this order.
-        </span>
+        <span>Please contact Pizza Yard if you need help with this order.</span>
       </div>
     `;
 
@@ -1673,12 +1987,8 @@ function renderTracker(
   wrap.innerHTML = `
     <div class="tracker-heading">
       <div>
-        <span class="eyebrow">
-          LIVE ORDER STATUS
-        </span>
-        <strong>
-          ${step.label}
-        </strong>
+        <span class="eyebrow">LIVE ORDER STATUS</span>
+        <strong>${step.label}</strong>
       </div>
 
       <span class="tracker-current">
@@ -1697,17 +2007,23 @@ function renderTracker(
 
     <div class="tracker-steps">
       ${TRACKING_STEPS.map(
-        (item, i) => `
+        (item, index) => `
           <div
-            class="tracker-step
-              ${i <= current ? "done" : ""}
-              ${i === current ? "current" : ""}"
+            class="tracker-step ${
+              index <= current
+                ? "done"
+                : ""
+            } ${
+              index === current
+                ? "current"
+                : ""
+            }"
           >
             <span>
               ${
-                i <= current
+                index <= current
                   ? "✓"
-                  : i + 1
+                  : index + 1
               }
             </span>
 
@@ -1720,17 +2036,22 @@ function renderTracker(
     </div>
 
     <p class="tracker-message">
-      ${step.message}
-      ${
+      ${step.message}${
         customerName
           ? ` ${escapeHtml(
-              customerName.split(" ")[0]
+              customerName
+                .split(" ")[0]
             )}.`
           : ""
       }
     </p>
   `;
 }
+
+
+// ============================================================
+// FETCH TRACKED ORDER
+// ============================================================
 
 async function fetchTrackedOrder() {
   if (
@@ -1744,13 +2065,14 @@ async function fetchTrackedOrder() {
     data,
     error
   } =
-    await window.pizzaYardSupabase.rpc(
-      "get_pizza_order_status",
-      {
-        p_tracking_token:
-          state.trackingToken
-      }
-    );
+    await window.pizzaYardSupabase
+      .rpc(
+        "get_pizza_order_status",
+        {
+          p_tracking_token:
+            state.trackingToken
+        }
+      );
 
   if (
     !error &&
@@ -1825,6 +2147,11 @@ function stopOrderTracking() {
     null;
 }
 
+
+// ============================================================
+// SUCCESS MODAL
+// ============================================================
+
 function openSuccessModal(
   total
 ) {
@@ -1840,22 +2167,28 @@ function openSuccessModal(
           .toUpperCase()
       : "";
 
-  const codeEl =
+  const codeElement =
     $("#tracking-code");
 
-  if (codeEl) {
-    codeEl.textContent =
+  if (codeElement) {
+    codeElement.textContent =
       code;
   }
 
   renderTracker(
     "new",
-    elements.name.value.trim()
+    elements.name
+      ? elements.name.value.trim()
+      : ""
   );
 
-  elements.successModal.classList.remove(
-    "hidden"
-  );
+  if (
+    elements.successModal
+  ) {
+    elements.successModal.classList.remove(
+      "hidden"
+    );
+  }
 
   document.body.classList.add(
     "modal-open"
@@ -1863,13 +2196,23 @@ function openSuccessModal(
 
   startOrderTracking();
 
-  elements.modalClose.focus();
+  if (
+    elements.modalClose &&
+    typeof elements.modalClose.focus ===
+      "function"
+  ) {
+    elements.modalClose.focus();
+  }
 }
 
 function closeSuccessModal() {
-  elements.successModal.classList.add(
-    "hidden"
-  );
+  if (
+    elements.successModal
+  ) {
+    elements.successModal.classList.add(
+      "hidden"
+    );
+  }
 
   document.body.classList.remove(
     "modal-open"
@@ -1878,34 +2221,63 @@ function closeSuccessModal() {
   stopOrderTracking();
 }
 
+
+// ============================================================
+// RESET ORDER
+// ============================================================
+
 function resetOrder() {
   state.selectedToppings = [];
+
   state.leftToppings = [];
+
   state.rightToppings = [];
+
   state.pizzaMode = "whole";
+
   state.quantity = 1;
-  state.orderType = "pickup";
+
+  state.orderType =
+    "pickup";
+
   state.cart = [];
 
-  elements.form.reset();
+  if (elements.form) {
+    elements.form.reset();
+  }
 
-  if (elements.orderTypeInputs[0]) {
+  if (
+    elements.orderTypeInputs.length
+  ) {
     elements.orderTypeInputs[0].checked =
       true;
   }
 
-  elements.address.required =
-    false;
+  if (elements.address) {
+    elements.address.required =
+      false;
+  }
 
-  elements.submissionError.textContent =
-    "";
+  if (
+    elements.submissionError
+  ) {
+    elements.submissionError.textContent =
+      "";
+  }
 
   clearErrors();
 
   renderToppings();
+
   updateDeliveryUI();
+
   updateUI();
 }
+
+
+// ============================================================
+// FORM SUBMISSION
+// ============================================================
 
 async function handleSubmit(
   event
@@ -1941,11 +2313,17 @@ async function handleSubmit(
 
   setSubmitting(true);
 
-  elements.submissionError.textContent =
-    "";
+  if (
+    elements.submissionError
+  ) {
+    elements.submissionError.textContent =
+      "";
+  }
 
   try {
-    await submitOrder(details);
+    await submitOrder(
+      details
+    );
 
     openSuccessModal(
       details.total
@@ -1956,30 +2334,20 @@ async function handleSubmit(
       error
     );
 
-    elements.submissionError.textContent =
-      error.message ===
-      "Formspree endpoint is not configured."
-        ? "Online ordering is not configured yet. Please try again after adding the Formspree endpoint."
-        : "We couldn't send your order right now. Please try again.";
+    if (
+      elements.submissionError
+    ) {
+      elements.submissionError.textContent =
+        error.message ===
+        "Formspree endpoint is not configured."
+          ? "Online ordering is not configured yet. Please try again after adding the Formspree endpoint."
+          : "We couldn't send your order right now. Please try again.";
+    }
   } finally {
     setSubmitting(false);
   }
 }
 
-function setSubmitting(
-  isSubmitting
-) {
-  state.submitting =
-    isSubmitting;
-
-  elements.form.classList.toggle(
-    "is-submitting",
-    isSubmitting
-  );
-
-  elements.placeOrder.disabled =
-    isSubmitting;
-}
 
 // ============================================================
 // TOPPING AVAILABILITY
@@ -2014,13 +2382,16 @@ async function loadToppingAvailability() {
 
     state.toppingAvailability =
       Object.fromEntries(
-        data.map((row) => [
-          row.name,
-          row.available !== false
-        ])
+        data.map(
+          (row) => [
+            row.name,
+            row.available !== false
+          ]
+        )
       );
 
     renderToppings();
+
     updateUI();
   } catch (error) {
     console.warn(
@@ -2030,16 +2401,17 @@ async function loadToppingAvailability() {
   }
 }
 
+
 // ============================================================
 // REVIEWS
 // ============================================================
 
 async function loadPublicReviews() {
-  const el =
+  const element =
     $("#reviews-list");
 
   if (
-    !el ||
+    !element ||
     !window.pizzaYardSupabase
   ) {
     return;
@@ -2072,33 +2444,42 @@ async function loadPublicReviews() {
       error
     );
 
-    el.innerHTML =
+    element.innerHTML =
       '<p class="muted">Reviews are temporarily unavailable.</p>';
 
     return;
   }
 
-  if (!data?.length) {
-    el.innerHTML =
+  if (
+    !data?.length
+  ) {
+    element.innerHTML =
       '<p class="muted">Be the first to leave a review. ⭐</p>';
 
     return;
   }
 
-  el.innerHTML =
+  element.innerHTML =
     data
-      .map((r) => {
+      .map((review) => {
         const comment =
           String(
-            r.comment || ""
+            review.comment || ""
           ).trim();
+
+        const rating =
+          Number(
+            review.rating
+          );
 
         return `
           <article class="review-card">
+
             <div class="review-card-top">
+
               <strong>
                 ${esc(
-                  r.display_name ||
+                  review.display_name ||
                     "Customer"
                 )}
               </strong>
@@ -2106,19 +2487,28 @@ async function loadPublicReviews() {
               <span class="review-stars">
                 ${
                   "★".repeat(
-                    Number(
-                      r.rating
+                    Math.max(
+                      0,
+                      Math.min(
+                        5,
+                        rating
+                      )
                     )
                   )
                 }${
                   "☆".repeat(
-                    5 -
-                      Number(
-                        r.rating
-                      )
+                    Math.max(
+                      0,
+                      5 -
+                        Math.min(
+                          5,
+                          rating
+                        )
+                    )
                   )
                 }
               </span>
+
             </div>
 
             <p class="review-comment">
@@ -2127,44 +2517,59 @@ async function loadPublicReviews() {
 
             <small class="muted">
               ${new Date(
-                r.created_at
+                review.created_at
               ).toLocaleDateString()}
             </small>
+
           </article>
         `;
       })
       .join("");
 }
 
-async function submitReview(e) {
-  e.preventDefault();
+async function submitReview(
+  event
+) {
+  event.preventDefault();
 
-  const msg =
+  const message =
     $("#review-form-message");
 
-  msg.textContent = "";
+  if (!message) {
+    return;
+  }
+
+  message.textContent =
+    "";
 
   const rating =
     Number(
-      $("#review-rating").value
+      $("#review-rating")?.value
     );
 
   const name =
-    $("#review-name").value.trim() ||
+    $("#review-name")
+      ?.value
+      .trim() ||
     "Customer";
 
   const comment =
-    $("#review-comment").value.trim();
+    $("#review-comment")
+      ?.value
+      .trim() ||
+    "";
 
   if (!comment) {
-    msg.textContent =
+    message.textContent =
       "Please write a review.";
 
     return;
   }
 
-  if (!window.pizzaYardSupabase) {
-    msg.textContent =
+  if (
+    !window.pizzaYardSupabase
+  ) {
+    message.textContent =
       "Reviews are temporarily unavailable.";
 
     return;
@@ -2176,32 +2581,43 @@ async function submitReview(e) {
     await window.pizzaYardSupabase
       .from("pizza_reviews")
       .insert({
-        display_name: name,
+        display_name:
+          name,
+
         rating,
+
         comment,
-        approved: false
+
+        approved:
+          false
       });
 
   if (error) {
     console.error(
-      "Review submission failed:",
+      "Review submission error:",
       error
     );
 
-    msg.textContent =
+    message.textContent =
       "We couldn't submit your review right now. Please try again.";
 
     return;
   }
 
-  $("#review-form").reset();
+  $("#review-form")
+    ?.reset();
 
-  $("#review-rating").value =
-    "5";
+  if (
+    $("#review-rating")
+  ) {
+    $("#review-rating").value =
+      "5";
+  }
 
-  msg.textContent =
+  message.textContent =
     "Thanks! Your review was submitted for approval. ⭐";
 }
+
 
 // ============================================================
 // NAVIGATION
@@ -2209,87 +2625,106 @@ async function submitReview(e) {
 
 function setupNavigation() {
   if (
-    !elements.navToggle ||
-    !elements.navMenu
+    elements.navToggle &&
+    elements.navMenu
   ) {
-    return;
-  }
+    elements.navToggle.addEventListener(
+      "click",
+      () => {
+        const open =
+          elements.navMenu.classList.toggle(
+            "open"
+          );
 
-  elements.navToggle.addEventListener(
-    "click",
-    () => {
-      const open =
-        elements.navMenu.classList.toggle(
-          "open"
+        elements.navToggle.setAttribute(
+          "aria-expanded",
+          String(open)
         );
 
-      elements.navToggle.setAttribute(
-        "aria-expanded",
-        String(open)
-      );
-
-      elements.navToggle.setAttribute(
-        "aria-label",
-        open
-          ? "Close navigation"
-          : "Open navigation"
-      );
-    }
-  );
+        elements.navToggle.setAttribute(
+          "aria-label",
+          open
+            ? "Close navigation"
+            : "Open navigation"
+        );
+      }
+    );
+  }
 
   $$("#nav-menu a").forEach(
     (link) => {
       link.addEventListener(
         "click",
         () => {
-          elements.navMenu.classList.remove(
-            "open"
-          );
+          if (
+            elements.navMenu
+          ) {
+            elements.navMenu.classList.remove(
+              "open"
+            );
+          }
 
-          elements.navToggle.setAttribute(
-            "aria-expanded",
-            "false"
-          );
+          if (
+            elements.navToggle
+          ) {
+            elements.navToggle.setAttribute(
+              "aria-expanded",
+              "false"
+            );
 
-          elements.navToggle.setAttribute(
-            "aria-label",
-            "Open navigation"
-          );
+            elements.navToggle.setAttribute(
+              "aria-label",
+              "Open navigation"
+            );
+          }
         }
       );
     }
   );
 }
 
+
 // ============================================================
-// INITIALIZATION
+// INIT
 // ============================================================
 
 function init() {
-  if (elements.year) {
+  if (
+    elements.year
+  ) {
     elements.year.textContent =
       new Date().getFullYear();
   }
 
   renderToppings();
+
   updateDeliveryUI();
+
   updateUI();
 
-  elements.qtyMinus?.addEventListener(
-    "click",
-    () =>
-      updateQuantity(
-        state.quantity - 1
-      )
-  );
+  if (
+    elements.qtyMinus
+  ) {
+    elements.qtyMinus.addEventListener(
+      "click",
+      () =>
+        updateQuantity(
+          state.quantity - 1
+        )
+    );
+  }
 
-  elements.qtyPlus?.addEventListener(
-    "click",
-    () =>
-      updateQuantity(
-        state.quantity + 1
-      )
-  );
+  if (
+    elements.qtyPlus
+  ) {
+    elements.qtyPlus.addEventListener(
+      "click",
+      () =>
+        updateQuantity(
+          state.quantity + 1
+        )
+    );
+  }
 
   elements.orderTypeInputs.forEach(
     (input) =>
@@ -2299,20 +2734,22 @@ function init() {
       )
   );
 
-  elements.form?.addEventListener(
-    "submit",
-    handleSubmit
-  );
+  if (elements.form) {
+    elements.form.addEventListener(
+      "submit",
+      handleSubmit
+    );
+  }
 
   $$(".pizza-mode-btn").forEach(
-    (btn) =>
-      btn.addEventListener(
+    (button) =>
+      button.addEventListener(
         "click",
         (event) => {
           event.preventDefault();
 
           const mode =
-            btn.dataset.mode;
+            button.dataset.mode;
 
           if (
             mode !== "whole" &&
@@ -2324,89 +2761,103 @@ function init() {
           state.pizzaMode =
             mode;
 
-          elements.toppingsError.textContent =
-            "";
+          if (
+            elements.toppingsError
+          ) {
+            elements.toppingsError.textContent =
+              "";
+          }
 
           renderToppings();
+
           updateUI();
         }
       )
   );
 
   loadToppingAvailability();
+
   loadPublicReviews();
 
-  $("#review-form")?.addEventListener(
-    "submit",
-    submitReview
-  );
+  $("#review-form")
+    ?.addEventListener(
+      "submit",
+      submitReview
+    );
 
-  $("#post-order-review")?.addEventListener(
-    "click",
-    () => {
-      document
-        .querySelector("#reviews")
-        ?.scrollIntoView({
-          behavior: "smooth"
-        });
+  $("#post-order-review")
+    ?.addEventListener(
+      "click",
+      () => {
+        document
+          .querySelector("#reviews")
+          ?.scrollIntoView({
+            behavior: "smooth"
+          });
 
-      document
-        .querySelector(
-          "#review-comment"
-        )
-        ?.focus();
-    }
-  );
+        $("#review-comment")
+          ?.focus();
+      }
+    );
 
-  elements.addAnotherPizza?.addEventListener(
-    "click",
-    addCurrentPizza
-  );
+  elements.addAnotherPizza
+    ?.addEventListener(
+      "click",
+      addCurrentPizza
+    );
 
-  elements.anotherOrder?.addEventListener(
-    "click",
-    () => {
-      closeSuccessModal();
-      resetOrder();
+  elements.anotherOrder
+    ?.addEventListener(
+      "click",
+      () => {
+        closeSuccessModal();
 
-      document
-        .querySelector("#builder")
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
-    }
-  );
+        resetOrder();
 
-  $("#enable-notifications")?.addEventListener(
-    "click",
-    enableOrderNotifications
-  );
+        document
+          .querySelector(
+            "#builder"
+          )
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+      }
+    );
+
+  $("#enable-notifications")
+    ?.addEventListener(
+      "click",
+      enableOrderNotifications
+    );
 
   updateNotificationUI();
 
-  elements.modalClose?.addEventListener(
-    "click",
-    closeSuccessModal
-  );
+  elements.modalClose
+    ?.addEventListener(
+      "click",
+      closeSuccessModal
+    );
 
-  elements.successModal?.addEventListener(
-    "click",
-    (event) => {
-      if (
-        event.target ===
-        elements.successModal
-      ) {
-        closeSuccessModal();
+  elements.successModal
+    ?.addEventListener(
+      "click",
+      (event) => {
+        if (
+          event.target ===
+          elements.successModal
+        ) {
+          closeSuccessModal();
+        }
       }
-    }
-  );
+    );
 
   document.addEventListener(
     "keydown",
     (event) => {
       if (
-        event.key === "Escape" &&
+        event.key ===
+          "Escape" &&
         elements.successModal &&
         !elements.successModal.classList.contains(
           "hidden"
@@ -2420,7 +2871,10 @@ function init() {
   setupNavigation();
 }
 
+
+// Start site
 init();
+
 
 // ============================================================
 // PIZZA YARD REWARDS
@@ -2444,15 +2898,18 @@ async function ensureRewardsMemberFromOrder() {
       "ensure_rewards_member",
       {
         p_name:
-          elements.name.value.trim(),
+          elements.name?.value.trim() ||
+          "",
 
         p_phone:
           normalizeSaintLuciaPhone(
-            elements.phone.value
+            elements.phone?.value ||
+              ""
           ),
 
         p_email:
-          elements.email.value.trim()
+          elements.email?.value.trim() ||
+          ""
       }
     );
   } catch (error) {
@@ -2463,16 +2920,28 @@ async function ensureRewardsMemberFromOrder() {
   }
 }
 
-async function checkRewards(e) {
-  e.preventDefault();
 
-  const msg =
+// ============================================================
+// CHECK REWARDS
+// ============================================================
+
+async function checkRewards(
+  event
+) {
+  event.preventDefault();
+
+  const message =
     $("#rewards-message");
 
   const result =
     $("#rewards-result");
 
-  msg.textContent = "";
+  if (!message || !result) {
+    return;
+  }
+
+  message.textContent =
+    "";
 
   result.classList.add(
     "hidden"
@@ -2480,26 +2949,31 @@ async function checkRewards(e) {
 
   const name =
     $("#rewards-name")
-      .value.trim();
+      ?.value
+      .trim() ||
+    "";
 
   const phone =
     normalizeSaintLuciaPhone(
       $("#rewards-phone")
-        .value
+        ?.value ||
+        ""
     );
 
   if (
     !name ||
     !isValidPhone(phone)
   ) {
-    msg.textContent =
+    message.textContent =
       "Enter your name and a valid 7-digit Saint Lucia phone number.";
 
     return;
   }
 
-  if (!window.pizzaYardSupabase) {
-    msg.textContent =
+  if (
+    !window.pizzaYardSupabase
+  ) {
+    message.textContent =
       "Rewards are temporarily unavailable.";
 
     return;
@@ -2509,36 +2983,48 @@ async function checkRewards(e) {
     data,
     error
   } =
-    await window.pizzaYardSupabase.rpc(
-      "get_rewards_summary",
-      {
-        p_name: name,
-        p_phone: phone
-      }
-    );
+    await window.pizzaYardSupabase
+      .rpc(
+        "get_rewards_summary",
+        {
+          p_name:
+            name,
+
+          p_phone:
+            phone
+        }
+      );
 
   if (
     error ||
     !data?.length
   ) {
-    msg.textContent =
+    console.error(
+      "Rewards lookup error:",
+      error
+    );
+
+    message.textContent =
       "We could not find a rewards account yet. Join Rewards when placing your next order, then check again after it is completed.";
 
     return;
   }
 
-  const r =
+  const reward =
     data[0];
 
   const points =
-    Number(r.points || 0);
+    Number(
+      reward.points || 0
+    );
 
   const next =
     Number(
-      r.next_reward_points || 0
+      reward.next_reward_points ||
+        0
     );
 
-  const pct =
+  const percentage =
     next
       ? Math.min(
           100,
@@ -2556,7 +3042,7 @@ async function checkRewards(e) {
 
     <strong>
       ${escapeHtml(
-        r.available_reward ||
+        reward.available_reward ||
           "Keep earning points"
       )}
     </strong>
@@ -2566,7 +3052,7 @@ async function checkRewards(e) {
         ? `
           <div class="rewards-progress">
             <span
-              style="width:${pct}%"
+              style="width:${percentage}%"
             ></span>
           </div>
 
@@ -2577,22 +3063,29 @@ async function checkRewards(e) {
             )}
             more points to
             ${escapeHtml(
-              r.next_reward_label
+              reward.next_reward_label ||
+                "your next reward"
             )}
           </p>
         `
-        : `
-          <p>
-            🎉 You have reached every current reward level.
-          </p>
-        `
+        :
+          `
+            <p>
+              🎉 You have reached every current reward level.
+            </p>
+          `
     }
 
     <div class="rewards-actions">
+
       <button
         type="button"
         data-reward="five_off"
-        ${points < 100 ? "disabled" : ""}
+        ${
+          points < 100
+            ? "disabled"
+            : ""
+        }
       >
         Redeem $5 OFF
       </button>
@@ -2600,7 +3093,11 @@ async function checkRewards(e) {
       <button
         type="button"
         data-reward="ten_off"
-        ${points < 200 ? "disabled" : ""}
+        ${
+          points < 200
+            ? "disabled"
+            : ""
+        }
       >
         Redeem $10 OFF
       </button>
@@ -2608,10 +3105,15 @@ async function checkRewards(e) {
       <button
         type="button"
         data-reward="free_pizza"
-        ${points < 300 ? "disabled" : ""}
+        ${
+          points < 300
+            ? "disabled"
+            : ""
+        }
       >
         Redeem Free Pizza
       </button>
+
     </div>
 
     <small class="muted">
@@ -2627,42 +3129,60 @@ async function checkRewards(e) {
     .querySelectorAll(
       "[data-reward]"
     )
-    .forEach((btn) => {
-      btn.addEventListener(
-        "click",
-        () =>
-          redeemReward(
-            name,
-            phone,
-            btn.dataset.reward,
-            btn,
-            result
-          )
-      );
-    });
+    .forEach(
+      (button) => {
+        button.addEventListener(
+          "click",
+          () =>
+            redeemReward(
+              name,
+              phone,
+              button.dataset.reward,
+              button,
+              result
+            )
+        );
+      }
+    );
 }
+
+
+// ============================================================
+// REDEEM REWARD
+// ============================================================
 
 async function redeemReward(
   name,
   phone,
   key,
-  btn,
+  button,
   result
 ) {
-  btn.disabled = true;
+  if (!button || !result) {
+    return;
+  }
+
+  button.disabled =
+    true;
 
   const {
     data,
     error
   } =
-    await window.pizzaYardSupabase.rpc(
-      "redeem_rewards",
-      {
-        p_name: name,
-        p_phone: phone,
-        p_reward_key: key
-      }
-    );
+    await window.pizzaYardSupabase
+      .rpc(
+        "redeem_rewards",
+        {
+          p_name:
+            name,
+
+          p_phone:
+            phone,
+
+          p_reward_key:
+            key
+        }
+      );
 
   if (
     error ||
@@ -2673,21 +3193,23 @@ async function redeemReward(
         "Unable to redeem this reward."
     );
 
-    btn.disabled = false;
+    button.disabled =
+      false;
 
     return;
   }
 
-  const r =
+  const reward =
     data[0];
 
   result.insertAdjacentHTML(
     "afterbegin",
     `
       <div class="reward-code">
+
         <strong>
           🎁 ${escapeHtml(
-            r.reward_label
+            reward.reward_label
           )}
         </strong>
 
@@ -2699,25 +3221,34 @@ async function redeemReward(
             margin:6px 0
           "
         >
-          ${escapeHtml(r.code)}
+          ${escapeHtml(
+            reward.code
+          )}
         </div>
 
         <small>
           Show this code to Pizza Yard staff.
           It can only be used once.
         </small>
+
       </div>
     `
   );
 
-  document.querySelector(
-    "#rewards-message"
-  ).textContent =
-    "Reward redeemed successfully!";
+  const message =
+    $("#rewards-message");
+
+  if (message) {
+    message.textContent =
+      "Reward redeemed successfully!";
+  }
 }
+
 
 // ============================================================
 // REWARDS HOOK
+// ============================================================
+// Join Rewards is saved after a successful order.
 // ============================================================
 
 const originalOpenSuccessModal =
@@ -2732,12 +3263,18 @@ openSuccessModal =
     );
   };
 
+
+// ============================================================
+// REWARDS FORM
+// ============================================================
+
 document.addEventListener(
   "DOMContentLoaded",
   () => {
-    $("#rewards-form")?.addEventListener(
-      "submit",
-      checkRewards
-    );
+    $("#rewards-form")
+      ?.addEventListener(
+        "submit",
+        checkRewards
+      );
   }
 );
