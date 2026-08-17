@@ -1,0 +1,26 @@
+Pizza Yard — Supabase JWT Recovery Fix (2026-08-17)
+
+This build uses the current Supabase project:
+https://dsjskpqdofuhkzkylxqt.supabase.co
+
+The staff-facing Supabase clients now use a shared browser-safe fetch recovery layer.
+When PostgREST returns 401 / PGRST303 ("JWT issued at future"), the client refreshes the
+staff session and retries the REST request with the fresh access token. Retries are
+rate-limited and delayed to tolerate transient Auth/PostgREST clock skew.
+
+No service-role or secret key is included.
+RLS remains enabled and staff access still depends on public.staff_users + auth.uid().
+
+Patched staff-facing clients:
+- dashboard.js
+- staff.js
+- inventory.js
+- breakfast.js
+
+The dashboard retains live pizza orders, breakfast orders, inventory summary, topping
+availability, reviews, rewards verification, reports, status/payment updates, kitchen
+mode, loud sound, voice alerts, and realtime subscriptions.
+
+IMPORTANT:
+Deploy the files with the matching HTML cache-busting query strings. Then sign out and
+sign back in once after deployment so the browser obtains a fresh Supabase Auth session.

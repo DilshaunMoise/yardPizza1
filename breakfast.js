@@ -2,9 +2,72 @@ const SUPABASE_URL="https://dsjskpqdofuhkzkylxqt.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_v4Vaxfo6i2Y_E2N24xO0ag_jkprC_Rk";
 
 let supabaseClient=null;
+
+// Pizza Yard Supabase JWT recovery layer. Handles transient PGRST303
+// ("JWT issued at future") without exposing any secret/service-role key.
+let authRefreshPromise = null;
+let lastAuthRecoveryAt = 0;
+const nativeFetch = window.fetch.bind(window);
+
+function isPizzaYardJwtError(response, body) {
+  return response?.status === 401 && body?.code === "PGRST303" && /JWT issued at future/i.test(body?.message || "");
+}
+
+async function pizzaYardRefreshSession(client) {
+  if (!client?.auth) return null;
+  if (authRefreshPromise) return authRefreshPromise;
+  const now = Date.now();
+  if (now - lastAuthRecoveryAt < 1500) {
+    try { const { data } = await client.auth.getSession(); return data?.session || null; } catch { return null; }
+  }
+  lastAuthRecoveryAt = now;
+  authRefreshPromise = client.auth.refreshSession()
+    .then(({ data, error }) => {
+      if (error) { console.warn("Pizza Yard auth refresh failed", error); return null; }
+      return data?.session || null;
+    })
+    .catch(error => { console.warn("Pizza Yard auth refresh failed", error); return null; })
+    .finally(() => { authRefreshPromise = null; });
+  return authRefreshPromise;
+}
+
+function makePizzaYardFetch(getClient) {
+  return async function(input, init) {
+    let response = await nativeFetch(input, init);
+    if (response.status !== 401) return response;
+    let body = null;
+    try { body = await response.clone().json(); } catch {}
+    const url = typeof input === "string" ? input : (input?.url || "");
+    if (!url.includes("/rest/v1/") || !isPizzaYardJwtError(response, body)) return response;
+
+    const client = getClient();
+    const delays = [0, 2000, 5000];
+    for (let attempt = 0; attempt < delays.length; attempt++) {
+      if (delays[attempt]) await new Promise(r => setTimeout(r, delays[attempt]));
+      const session = await pizzaYardRefreshSession(client);
+      if (!session?.access_token) continue;
+      const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+      headers.set("Authorization", `Bearer ${session.access_token}`);
+      try {
+        const retry = input instanceof Request
+          ? await nativeFetch(new Request(input.clone(), { headers }))
+          : await nativeFetch(input, { ...(init || {}), headers });
+        if (retry.status !== 401) return retry;
+        let retryBody = null;
+        try { retryBody = await retry.clone().json(); } catch {}
+        if (!isPizzaYardJwtError(retry, retryBody)) return retry;
+        response = retry;
+      } catch (error) {
+        console.warn("Pizza Yard REST retry failed", error);
+      }
+    }
+    return response;
+  };
+}
+
 try{
   if(window.supabase?.createClient){
-    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{global:{fetch:makePizzaYardFetch(()=>supabaseClient)}});
   }
 }catch(err){console.error('Supabase initialization failed:',err)}
 
