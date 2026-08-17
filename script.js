@@ -466,7 +466,8 @@ async function saveOrderToSupabase(details) {
     toppings: toppingsSummary, order_source: "online", topping_count: details.toppingCount,
     unit_price: details.pizzasSubtotal / Math.max(1, details.boxes), included_toppings: details.includedToppings,
     extra_toppings: details.extraToppings, extra_topping_cost: details.extraToppingCost, quantity: details.boxes,
-    delivery_fee: details.deliveryFee, special_instructions: details.instructions || null, total: details.total, status: "new", tracking_token: state.trackingToken
+    delivery_fee: details.deliveryFee, special_instructions: details.instructions || null, total: details.total, status: "new", tracking_token: state.trackingToken,
+    order_details: JSON.stringify(details.pizzas)
   };
   const { error } = await window.pizzaYardSupabase.from("pizza_orders").insert(payload);
   if (error) { console.error("Supabase order save failed:", error); throw new Error("We couldn't receive your order right now. Please try again."); }

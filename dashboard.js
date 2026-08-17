@@ -1,68 +1,6 @@
-const SUPABASE_URL="https://pqzfmbqmkeythyajkiti.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY="sb_publishable_p1ugtwfPHsKFmZ8KOQ_fBQ_YCAPYWxn";
-
-// Pizza Yard auth recovery:
-// PostgREST can reject an otherwise valid staff session with PGRST303
-// ("JWT issued at future"). Keep the existing dashboard/session intact,
-// refresh the Auth session once, then replay the failed REST request with
-// the fresh access token. This does not expose a service-role key.
-let supabaseClient;
-let authRefreshPromise=null;
-let lastAuthRecoveryAt=0;
-const nativeFetch=window.fetch.bind(window);
-
-function isPostgrestJwtError(response,errorBody){
-  return response?.status===401 && errorBody?.code==="PGRST303" && errorBody?.message==="JWT issued at future";
-}
-
-async function refreshStaffSession(){
-  if(!supabaseClient)return null;
-  const now=Date.now();
-  if(authRefreshPromise)return authRefreshPromise;
-  if(now-lastAuthRecoveryAt<1500){
-    const {data}=await supabaseClient.auth.getSession();
-    return data?.session||null;
-  }
-  lastAuthRecoveryAt=now;
-  authRefreshPromise=supabaseClient.auth.refreshSession()
-    .then(({data,error})=>{
-      if(error){console.warn("Pizza Yard auth refresh failed",error);return null;}
-      return data?.session||null;
-    })
-    .catch(error=>{console.warn("Pizza Yard auth refresh failed",error);return null;})
-    .finally(()=>{authRefreshPromise=null});
-  return authRefreshPromise;
-}
-
-async function resilientSupabaseFetch(input,init){
-  const response=await nativeFetch(input,init);
-  if(response.status!==401)return response;
-
-  let body=null;
-  try{body=await response.clone().json()}catch{}
-  const url=typeof input==="string"?input:(input?.url||"");
-  if(!url.includes("/rest/v1/")||!isPostgrestJwtError(response,body))return response;
-
-  const session=await refreshStaffSession();
-  if(!session?.access_token)return response;
-
-  const headers=new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
-  headers.set("Authorization",`Bearer ${session.access_token}`);
-
-  try{
-    if(input instanceof Request){
-      return await nativeFetch(new Request(input.clone(),{headers}));
-    }
-    return await nativeFetch(input,{...(init||{}),headers});
-  }catch(error){
-    console.warn("Pizza Yard REST retry failed",error);
-    return response;
-  }
-}
-
-supabaseClient=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
-  global:{fetch:resilientSupabaseFetch}
-});
+const SUPABASE_URL="https://dsjskpqdofuhkzkylxqt.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_v4Vaxfo6i2Y_E2N24xO0ag_jkprC_Rk";
+const supabaseClient=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const TOPPINGS=["Corn","Pepperoni","Mushroom","Tuna","Bacon","Ham","Bell Peppers","Sausage","Veg"];
 const state={orders:[],selectedId:null,filter:"active",search:"",soundOn:true,speechOn:true,kitchenMode:false,reportsOpen:false,channel:null,alertTimeout:null,audioContext:null,toastTimeout:null,availability:{},reviews:[],lastAnnouncedId:null};
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
@@ -80,7 +18,7 @@ function setConnection(live){const e=$("#connection-status");e.textContent=live?
 function showToast(m){const t=$("#toast");t.textContent=m;t.classList.remove("hidden");clearTimeout(state.toastTimeout);state.toastTimeout=setTimeout(()=>t.classList.add("hidden"),3500)}
 function playNotification(){if(!state.soundOn)return;try{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;state.audioContext ||= new A;const c=state.audioContext;if(c.state==="suspended")c.resume().catch(()=>{});const now=c.currentTime;[0,.18,.36,.54,1.05,1.23,1.41].forEach((offset,i)=>{const o=c.createOscillator(),g=c.createGain();o.type=i%2?"square":"sawtooth";o.frequency.setValueAtTime(i%2?980:740,now+offset);g.gain.setValueAtTime(.0001,now+offset);g.gain.exponentialRampToValueAtTime(.34,now+offset+.025);g.gain.exponentialRampToValueAtTime(.0001,now+offset+.16);o.connect(g).connect(c.destination);o.start(now+offset);o.stop(now+offset+.18)});if(navigator.vibrate)navigator.vibrate([300,120,300,120,500]);}catch(e){console.warn(e)}}
 function announceOrder(o){if(!state.speechOn||!("speechSynthesis" in window))return;const parts=[];parts.push(`New Pizza Yard order ${o.order_number||""}`);if(o.customer_name&&o.customer_name!=="Walk-in Customer")parts.push(`for ${o.customer_name}`);parts.push(o.order_source==="staff"?"staff order":"online order");parts.push(o.order_type==="delivery"?"delivery":"pickup");parts.push(`${o.quantity||1} 12 inch pizza${Number(o.quantity)===1?"":"s"}`);if(o.toppings?.mode==="half_and_half"){parts.push(`half and half, left side ${((o.toppings.left||[]).join(", ")||"cheese")}, right side ${((o.toppings.right||[]).join(", ")||"cheese")}`)}else if(Array.isArray(o.toppings)&&o.toppings.length){parts.push(`toppings ${o.toppings.join(", ")}`)}parts.push(`total ${Number(o.total||0).toFixed(2)} dollars`);window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(parts.join(". "));u.rate=.92;u.pitch=1;u.volume=1;window.speechSynthesis.speak(u)}
-function showNewOrderAlert(o){state.lastAnnouncedId=o.id;const a=$("#new-order-alert");$("#new-order-alert-text").textContent=`${orderNumber(o)} • ${o.customer_name||"Walk-in Customer"} • ${money(o.total)} • ${o.order_source==="staff"?"STAFF ORDER":"ONLINE ORDER"}`;a.classList.remove("hidden");clearTimeout(state.alertTimeout);state.alertTimeout=setTimeout(()=>a.classList.add("hidden"),12000);playNotification();setTimeout(()=>announceOrder(o),250)}
+function showNewOrderAlert(o){state.lastAnnouncedId=o.id;const a=$("#new-order-alert");$("#new-order-alert-text").textContent=`${orderNumber(o)} • ${o.customer_name||"Walk-in Customer"} • ${money(o.total)} • ${o.order_source==="staff"?"STAFF ORDER":"ONLINE ORDER"}`;a.classList.remove("hidden");clearTimeout(state.alertTimeout);state.alertTimeout=setTimeout(()=>a.classList.add("hidden"),12000);playNotification();setTimeout(()=>playNotification(),2200);setTimeout(()=>playNotification(),5000);setTimeout(()=>announceOrder(o),250)}
 function toppingText(o){if(Array.isArray(o.order_items)&&o.order_items.length>1)return o.order_items.map((it,i)=>`Pizza ${i+1}: ${it.mode==="half"?`Left: ${(it.toppings.left||[]).join(", ")||"Cheese"} | Right: ${(it.toppings.right||[]).join(", ")||"Cheese"}`:(it.toppings.length?it.toppings.join(", "):"Cheese")}`).join(" • ");const t=o.toppings;if(t&&typeof t==="object"&&!Array.isArray(t)&&t.mode==="half_and_half")return `Left: ${(t.left||[]).join(", ")||"Cheese"} | Right: ${(t.right||[]).join(", ")||"Cheese"}`;return Array.isArray(t)&&t.length?t.join(", "):"Cheese Pizza"}
 function filteredOrders(){const q=state.search.trim().toLowerCase();return [...state.orders].filter(o=>state.filter==="active"?isActive(o.status):state.filter==="all"?true:state.filter==="staff"?o.order_source==="staff":state.filter==="online"?o.order_source!=="staff":o.status===state.filter).filter(o=>!q||[o.customer_name,o.customer_phone,o.customer_email,orderNumber(o),toppingText(o)].some(v=>String(v??"").toLowerCase().includes(q))).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))}
 function updateStats(){const today=state.orders.filter(o=>new Date(o.created_at)>=todayStart());$("#stat-new").textContent=state.orders.filter(o=>o.status==="new").length;$("#stat-preparing").textContent=state.orders.filter(o=>o.status==="preparing"||o.status==="in_oven").length;$("#stat-ready").textContent=state.orders.filter(o=>o.status==="ready").length;$("#stat-today").textContent=today.length;$("#stat-sales").textContent=money(today.filter(o=>o.status!=="cancelled").reduce((sum,o)=>sum+Number(o.total||0),0))}
@@ -91,16 +29,7 @@ function repeatOrder(o){
   supabaseClient.from("pizza_orders").insert(payload).select("order_number,id").single().then(({data,error})=>{if(error){console.error(error);showToast("Could not repeat this order.");return}showToast(`Repeat order ${data?.order_number?"#"+data.order_number:"created"}.`)});
 }
 function printOrder(o){const w=window.open("","_blank","width=600,height=800");if(!w)return;w.document.write(`<html><head><title>${orderNumber(o)} Pizza Yard</title><style>body{font-family:Arial;padding:25px}h1{font-size:24px}h2{margin-top:22px;border-bottom:1px solid #ddd;padding-bottom:6px}.line{margin:7px 0}.total{font-size:24px;font-weight:bold;margin-top:18px}.half{display:grid;grid-template-columns:100px 1fr;gap:8px}</style></head><body><h1>🍕 Pizza Yard</h1><div>${orderNumber(o)} • ${o.order_source==="staff"?"STAFF":"ONLINE"}</div><div class="line"><b>Customer:</b> ${esc(o.customer_name)}</div><div class="line"><b>Phone:</b> ${esc(o.customer_phone)}</div><div class="line"><b>Type:</b> ${o.order_type}</div><h2>Pizza</h2><div class="line"><b>Size:</b> ${esc(o.pizza_size||'12"')}</div><div class="line"><b>Qty:</b> ${o.quantity}</div><div class="line"><b>Toppings:</b> ${esc(toppingText(o))}</div>${o.delivery_address?`<div class="line"><b>Address:</b> ${esc(o.delivery_address)}</div>`:""}${o.special_instructions?`<div class="line"><b>Notes:</b> ${esc(o.special_instructions)}</div>`:""}<div class="total">TOTAL ${money(o.total)}</div></body></html>`);w.document.close();w.focus();w.print()}
-async function loadOrders(){
-  if(!supabaseClient){$("#orders-list").innerHTML='<div class="empty-state">Supabase is not configured.</div>';return}
-  let {data,error}=await supabaseClient.from("pizza_orders").select("*").order("created_at",{ascending:false});
-  if(error && error.code==="PGRST303"){
-    await refreshStaffSession();
-    ({data,error}=await supabaseClient.from("pizza_orders").select("*").order("created_at",{ascending:false}));
-  }
-  if(error){console.error(error);$("#orders-list").innerHTML='<div class="empty-state">Unable to load orders. Reconnecting to staff session…</div>';return}
-  state.orders=data||[];updateStats();renderReports();renderOrders();renderDetails();
-}
+async function loadOrders(){if(!supabaseClient){$("#orders-list").innerHTML='<div class="empty-state">Supabase is not configured.</div>';return}const{data,error}=await supabaseClient.from("pizza_orders").select("*").order("created_at",{ascending:false});if(error){console.error(error);$("#orders-list").innerHTML='<div class="empty-state">Unable to load orders. Check staff permissions.</div>';return}state.orders=data||[];updateStats();renderReports();renderOrders();renderDetails()}
 function upsertOrder(o,isNew=false){const i=state.orders.findIndex(x=>x.id===o.id);if(i===-1)state.orders.push(o);else state.orders[i]=o;updateStats();renderReports();if(isNew)state.selectedId=o.id;renderOrders();renderDetails();if(isNew)showNewOrderAlert(o)}
 function subscribeToOrders(){if(!supabaseClient)return;if(state.channel)supabaseClient.removeChannel(state.channel);state.channel=supabaseClient.channel("pizza-orders-live").on("postgres_changes",{event:"INSERT",schema:"public",table:"pizza_orders"},p=>upsertOrder(p.new,true)).on("postgres_changes",{event:"UPDATE",schema:"public",table:"pizza_orders"},p=>upsertOrder(p.new,false)).subscribe(s=>{if(s==="SUBSCRIBED")setConnection(true);else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(s)){setConnection(false);setTimeout(()=>subscribeToOrders(),2500)}})}
 async function setPayment(id,payment_status){const{error}=await supabaseClient.from("pizza_orders").update({payment_status}).eq("id",id);if(error){showToast("Could not update payment.");return}const o=state.orders.find(x=>x.id===id);if(o){o.payment_status=payment_status;renderDetails()}showToast(payment_status==="paid"?"Order marked paid.":"Order marked unpaid.")}
@@ -130,19 +59,7 @@ function renderReports(){
 }
 function tickTimers(){document.querySelectorAll(".order-timer[data-created]").forEach(e=>{e.textContent=elapsed(e.dataset.created);const m=(Date.now()-new Date(e.dataset.created).getTime())/60000;e.classList.toggle("age-warn",m>=15&&m<30);e.classList.toggle("age-danger",m>=30)})}
 function setKitchenMode(on){state.kitchenMode=on;document.body.classList.toggle("kitchen-mode",on);const b=$("#kitchen-toggle");b?.setAttribute("aria-pressed",String(on));if(b)b.textContent=on?"🧑‍🍳 EXIT KITCHEN MODE":"🍕 KITCHEN MODE";renderOrders();renderDetails()}
-function init(){$("#login-form").addEventListener("submit",handleLogin);$("#logout-button").addEventListener("click",()=>supabaseClient.auth.signOut());setupFilters();setupSound();$("#kitchen-toggle")?.addEventListener("click",()=>setKitchenMode(!state.kitchenMode));$("#reports-toggle")?.addEventListener("click",()=>{state.reportsOpen=!state.reportsOpen;$("#reports-panel").classList.toggle("hidden",!state.reportsOpen);if(state.reportsOpen)renderReports()});$("#replay-order")?.addEventListener("click",()=>{const o=state.orders.find(x=>x.id===state.selectedId)||state.orders.find(x=>x.id===state.lastAnnouncedId);if(o)announceOrder(o)});setInterval(tickTimers,1000);$("#sound-toggle")?.insertAdjacentHTML("afterend",`<button id="speech-toggle" class="ghost-btn" type="button" aria-pressed="true">🗣️ VOICE ON</button>`);$("#speech-toggle")?.addEventListener("click",()=>{state.speechOn=!state.speechOn;const b=$("#speech-toggle");b.textContent=state.speechOn?"🗣️ VOICE ON":"🔇 Voice Off";b.setAttribute("aria-pressed",String(state.speechOn));if(state.speechOn&&"speechSynthesis" in window){const u=new SpeechSynthesisUtterance("Pizza Yard voice alerts are on.");window.speechSynthesis.cancel();window.speechSynthesis.speak(u)}});if(!supabaseClient)return;supabaseClient.auth.getSession().then(({data:{session}})=>showDashboard(session));supabaseClient.auth.onAuthStateChange((_e,s)=>showDashboard(s))
-
-  // If Auth rotates/replaces the token, immediately reload all staff data.
-  supabaseClient.auth.onAuthStateChange((event,session)=>{
-    if(event==="TOKEN_REFRESHED" && session){
-      loadOrders();
-      loadBreakfastOrders();
-      loadAvailability();
-      loadReviews();
-      loadInventorySummary();
-    }
-  });
-}
+function init(){$("#login-form").addEventListener("submit",handleLogin);$("#logout-button").addEventListener("click",()=>supabaseClient.auth.signOut());setupFilters();setupSound();$("#kitchen-toggle")?.addEventListener("click",()=>setKitchenMode(!state.kitchenMode));$("#reports-toggle")?.addEventListener("click",()=>{state.reportsOpen=!state.reportsOpen;$("#reports-panel").classList.toggle("hidden",!state.reportsOpen);if(state.reportsOpen)renderReports()});$("#replay-order")?.addEventListener("click",()=>{const o=state.orders.find(x=>x.id===state.selectedId)||state.orders.find(x=>x.id===state.lastAnnouncedId);if(o)announceOrder(o)});setInterval(tickTimers,1000);$("#sound-toggle")?.insertAdjacentHTML("afterend",`<button id="speech-toggle" class="ghost-btn" type="button" aria-pressed="true">🗣️ VOICE ON</button>`);$("#speech-toggle")?.addEventListener("click",()=>{state.speechOn=!state.speechOn;const b=$("#speech-toggle");b.textContent=state.speechOn?"🗣️ VOICE ON":"🔇 Voice Off";b.setAttribute("aria-pressed",String(state.speechOn));if(state.speechOn&&"speechSynthesis" in window){const u=new SpeechSynthesisUtterance("Pizza Yard voice alerts are on.");window.speechSynthesis.cancel();window.speechSynthesis.speak(u)}});if(!supabaseClient)return;supabaseClient.auth.getSession().then(({data:{session}})=>showDashboard(session));supabaseClient.auth.onAuthStateChange((_e,s)=>showDashboard(s))}
 init();
 
 
@@ -152,17 +69,7 @@ function upcomingSundayForDashboard(){const d=new Date();const day=d.getDay();d.
 function breakfastDateLabel(v){return new Intl.DateTimeFormat('en-US',{weekday:'long',month:'long',day:'numeric'}).format(new Date(v+'T12:00:00'))}
 function breakfastStatusLabel(s){return String(s||'').replaceAll('_',' ').toUpperCase()}
 function renderBreakfastOrders(rows){const list=document.querySelector('#breakfast-orders-list'),count=document.querySelector('#breakfast-count');if(!list)return;breakfastState.rows=rows||[];if(count)count.textContent=`${breakfastState.rows.length} order${breakfastState.rows.length===1?'':'s'}`;if(!breakfastState.rows.length){list.innerHTML='<div class="empty-state">No Sunday breakfast pre-orders yet.</div>';return}list.innerHTML=breakfastState.rows.map(o=>{const items=Array.isArray(o.items)?o.items:[];const summary=items.map(i=>`${i.name} ×${i.quantity}`).join(' • ')||'Breakfast order';return `<article class="breakfast-order-row" data-breakfast-id="${esc(o.id)}"><div class="breakfast-order-main"><strong>🍳 ${esc(o.customer_name)} · ${esc(o.customer_phone)}</strong><small>${esc(summary)}</small><span class="breakfast-status ${esc(o.status)}">${breakfastStatusLabel(o.status)}</span></div><div class="breakfast-order-total">${money(o.total)}</div></article>`}).join('');list.querySelectorAll('.breakfast-order-row').forEach(el=>el.addEventListener('click',()=>{const o=breakfastState.rows.find(x=>x.id===el.dataset.breakfastId);if(!o)return;const items=(Array.isArray(o.items)?o.items:[]).map(i=>`${i.name} ×${i.quantity} — ${money(i.line_total)}`).join('\n');const next=prompt(`Breakfast order for ${o.customer_name}\nPhone: ${o.customer_phone}\n\n${items}\n\nNotes: ${o.special_instructions||'None'}\n\nStatus: new, preparing, ready, completed, cancelled`,o.status);if(next&&['new','preparing','ready','completed','cancelled'].includes(next)&&next!==o.status)updateBreakfastStatus(o.id,next)}))}
-async function loadBreakfastOrders(){
-  if(!supabaseClient)return;
-  const label=document.querySelector('#breakfast-period-label');if(label)label.textContent='Live breakfast orders';
-  let {data,error}=await supabaseClient.from('breakfast_orders').select('*').order('created_at',{ascending:false}).limit(100);
-  if(error && error.code==='PGRST303'){
-    await refreshStaffSession();
-    ({data,error}=await supabaseClient.from('breakfast_orders').select('*').order('created_at',{ascending:false}).limit(100));
-  }
-  if(error){console.error('Breakfast load failed',error);const list=document.querySelector('#breakfast-orders-list');if(list)list.innerHTML='<div class="empty-state">Breakfast orders could not be loaded. Reconnecting to staff session…</div>';return}
-  renderBreakfastOrders(data||[])
-}
+async function loadBreakfastOrders(){if(!supabaseClient)return;const label=document.querySelector('#breakfast-period-label');if(label)label.textContent='Live breakfast orders';const {data,error}=await supabaseClient.from('breakfast_orders').select('*').order('created_at',{ascending:false}).limit(100);if(error){console.error('Breakfast load failed',error);const list=document.querySelector('#breakfast-orders-list');if(list)list.innerHTML='<div class="empty-state">Breakfast orders could not be loaded.</div>';return}renderBreakfastOrders(data||[])}
 async function updateBreakfastStatus(id,status){const {error}=await supabaseClient.from('breakfast_orders').update({status}).eq('id',id);if(error){showToast('Could not update breakfast order.');return}showToast(`Breakfast order marked ${breakfastStatusLabel(status)}.`);loadBreakfastOrders()}
 function subscribeToBreakfast(){if(!supabaseClient)return;if(breakfastState.channel)supabaseClient.removeChannel(breakfastState.channel);breakfastState.channel=supabaseClient.channel('breakfast-orders-live').on('postgres_changes',{event:'*',schema:'public',table:'breakfast_orders'},()=>loadBreakfastOrders()).subscribe()}
 async function loadInventorySummary(){const el=document.querySelector('#inventory-summary-list');if(!el||!supabaseClient)return;const {data,error}=await supabaseClient.from('inventory_items').select('id,name,quantity,unit,min_quantity,weight,weight_unit,min_weight,weight_tracking').order('name');if(error){el.innerHTML='<span class="muted">Inventory summary unavailable. Open the Inventory page for full controls.</span>';return}const needs=(data||[]).filter(i=>{const out=Number(i.quantity||0)<=0||(i.weight_tracking&&i.weight!=null&&Number(i.weight)<=0);const low=Number(i.quantity||0)<=Number(i.min_quantity||0)||(i.weight_tracking&&i.min_weight!=null&&i.weight!=null&&Number(i.weight)<=Number(i.min_weight));return out||low}).slice(0,10);if(!needs.length){el.innerHTML='<span class="muted">No items currently at or below their minimum. ✅</span>';return}el.innerHTML=needs.map(i=>{const out=Number(i.quantity||0)<=0||(i.weight_tracking&&i.weight!=null&&Number(i.weight)<=0);return `<div class="inventory-mini-row"><div><div class="inv-name">${esc(i.name)}</div><div class="inv-meta">${Number(i.quantity||0).toLocaleString(undefined,{maximumFractionDigits:3})} ${esc(i.unit)}${i.weight_tracking&&i.weight!=null?` • ${Number(i.weight).toLocaleString(undefined,{maximumFractionDigits:3})} ${esc(i.weight_unit)}`:''}</div></div><span class="inv-state ${out?'out':'low'}">${out?'OUT':'LOW'}</span><a class="ghost-btn" href="inventory.html">Open</a></div>`}).join('')}
