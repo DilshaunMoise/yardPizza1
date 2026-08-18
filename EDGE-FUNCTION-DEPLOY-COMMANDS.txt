@@ -1,0 +1,46 @@
+PIZZA YARD — EXACT EDGE FUNCTION DEPLOYMENT
+
+You are already logged in to Supabase.
+
+1) In Terminal, cd into this folder (the folder containing supabase/config.toml).
+
+2) Deploy directly to the Pizza Yard project:
+
+supabase functions deploy pizza-yard-staff-api --project-ref dsjskpqdofuhkzkylxqt --no-verify-jwt
+
+3) If you want verbose deployment diagnostics:
+
+supabase functions deploy pizza-yard-staff-api --project-ref dsjskpqdofuhkzkylxqt --no-verify-jwt --debug
+
+FUNCTION URL
+https://dsjskpqdofuhkzkylxqt.supabase.co/functions/v1/pizza-yard-staff-api
+
+NO SECRET KEY IS REQUIRED ON YOUR MAC FOR THIS DEPLOYMENT.
+The deployed Edge Function automatically receives SUPABASE_SECRET_KEYS from Supabase.
+Never paste the sb_secret_ key into a browser file, GitHub Pages, or this ZIP.
+
+VERIFY STAFF AUTHORIZATION IN SUPABASE SQL EDITOR
+
+select au.id, au.email, su.user_id
+from auth.users au
+left join public.staff_users su on su.user_id = au.id
+where au.email = 'yardpizza758@gmail.com';
+
+The auth.users.id and staff_users.user_id must be the same UUID.
+
+OPTIONAL FUNCTION CHECK FROM TERMINAL
+
+curl -i -X OPTIONS 'https://dsjskpqdofuhkzkylxqt.supabase.co/functions/v1/pizza-yard-staff-api'
+
+A successful deployment should return an HTTP 200 response to OPTIONS.
+
+AFTER DEPLOYMENT
+- Upload this replacement website package to GitHub Pages.
+- Sign out of the dashboard.
+- Hard refresh Safari.
+- Sign back in.
+- Place a test pizza order.
+- Confirm it appears in Live Dashboard.
+- Change its status.
+- Confirm breakfast and inventory load.
+- Confirm reviews/toppings work on the customer site.

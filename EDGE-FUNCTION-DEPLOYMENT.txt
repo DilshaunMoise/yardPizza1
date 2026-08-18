@@ -1,0 +1,47 @@
+PIZZA YARD — STAFF EDGE API DEPLOYMENT
+
+Project ref: dsjskpqdofuhkzkylxqt
+Function: pizza-yard-staff-api
+URL: https://dsjskpqdofuhkzkylxqt.supabase.co/functions/v1/pizza-yard-staff-api
+
+WHY THIS FIX
+The browser was receiving 401 / PGRST303 / "JWT issued at future" from PostgREST.
+Staff reads/writes now go through this Edge Function. The function verifies the
+user JWT itself, checks public.staff_users, then uses the server-only Supabase
+secret key for the database operation. The browser never receives that key.
+
+DEPLOY FROM MAC
+1. Open Terminal.
+2. Put this entire folder on your Mac and cd into its root (the folder containing
+   supabase/config.toml).
+3. Run:
+
+   supabase login
+   supabase link --project-ref dsjskpqdofuhkzkylxqt
+   supabase functions deploy pizza-yard-staff-api --no-verify-jwt
+
+The --no-verify-jwt setting is intentional. The function performs its own JWT
+verification so Supabase's gateway does not reject the future-dated JWT before
+the function can handle it.
+
+VERIFY STAFF RECORD
+Run in Supabase SQL Editor:
+
+select au.id, au.email, su.user_id
+from auth.users au
+left join public.staff_users su on su.user_id = au.id
+where au.email = 'yardpizza758@gmail.com';
+
+The auth.users.id and staff_users.user_id values must match.
+
+AFTER DEPLOYMENT
+1. Upload all website files from this package to GitHub Pages.
+2. Sign out of the Pizza Yard dashboard.
+3. Hard refresh Safari.
+4. Sign back in.
+5. Test: pizza order -> dashboard -> status update -> breakfast -> inventory -> reviews.
+
+IMPORTANT
+Do NOT put the Supabase secret key in any HTML/JS file or GitHub repository.
+Supabase automatically provides SUPABASE_SECRET_KEYS to deployed Edge Functions.
+No secret key needs to be pasted into the website.

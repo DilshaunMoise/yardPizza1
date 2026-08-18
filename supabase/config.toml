@@ -1,0 +1,4 @@
+project_id = "dsjskpqdofuhkzkylxqt"
+
+[functions.pizza-yard-staff-api]
+verify_jwt = false

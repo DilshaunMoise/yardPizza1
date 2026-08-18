@@ -21,3 +21,13 @@ Main files:
 - style.css / script.js
 - breakfast-banner.css
 - supabase-setup.sql
+
+FINAL EDGE FUNCTION FIX
+-----------------------
+This replacement package includes the actual function source at:
+  supabase/functions/pizza-yard-staff-api/index.ts
+
+Deploy it with:
+  supabase functions deploy pizza-yard-staff-api --project-ref dsjskpqdofuhkzkylxqt --no-verify-jwt
+
+Do not put a secret key into any browser file.

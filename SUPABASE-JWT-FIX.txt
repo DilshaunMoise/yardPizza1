@@ -1,26 +1,22 @@
-Pizza Yard — Supabase JWT Recovery Fix (2026-08-17)
+Pizza Yard — Supabase JWT + Edge API Fix
 
-This build uses the current Supabase project:
-https://dsjskpqdofuhkzkylxqt.supabase.co
+Customer pages now use a non-persistent anonymous Supabase client so stale staff
+Auth sessions are never attached to public customer requests.
 
-The staff-facing Supabase clients now use a shared browser-safe fetch recovery layer.
-When PostgREST returns 401 / PGRST303 ("JWT issued at future"), the client refreshes the
-staff session and retries the REST request with the fresh access token. Retries are
-rate-limited and delayed to tolerate transient Auth/PostgREST clock skew.
+Staff pages use the pizza-yard-staff-api Edge Function for database operations.
+The function verifies the user's JWT with Supabase JWKS, tolerates up to 5 minutes
+of clock skew, checks public.staff_users, and uses the server-only secret key for
+PostgREST operations.
 
-No service-role or secret key is included.
-RLS remains enabled and staff access still depends on public.staff_users + auth.uid().
+Staff operations covered:
+- pizza_orders
+- breakfast_orders
+- pizza_topping_availability
+- pizza_reviews
+- inventory_items
+- inventory_stock_events
+- inventory_daily_counts
+- verify_reward_code RPC
 
-Patched staff-facing clients:
-- dashboard.js
-- staff.js
-- inventory.js
-- breakfast.js
-
-The dashboard retains live pizza orders, breakfast orders, inventory summary, topping
-availability, reviews, rewards verification, reports, status/payment updates, kitchen
-mode, loud sound, voice alerts, and realtime subscriptions.
-
-IMPORTANT:
-Deploy the files with the matching HTML cache-busting query strings. Then sign out and
-sign back in once after deployment so the browser obtains a fresh Supabase Auth session.
+The browser contains only the publishable key. Never put a secret/service-role key
+in the browser.

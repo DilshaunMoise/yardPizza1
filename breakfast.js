@@ -67,7 +67,10 @@ function makePizzaYardFetch(getClient) {
 
 try{
   if(window.supabase?.createClient){
-    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{global:{fetch:makePizzaYardFetch(()=>supabaseClient)}});
+    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+    global:{fetch:makePizzaYardFetch(()=>supabaseClient)}
+  });
   }
 }catch(err){console.error('Supabase initialization failed:',err)}
 

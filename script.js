@@ -60,7 +60,14 @@ if (
 ) {
   window.pizzaYardSupabase = window.supabase.createClient(
     CONFIG.supabaseUrl,
-    CONFIG.supabasePublishableKey
+    CONFIG.supabasePublishableKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    }
   );
 }
 

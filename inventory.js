@@ -65,6 +65,75 @@ function makePizzaYardFetch(getClient) {
 }
 
 sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{global:{fetch:makePizzaYardFetch(()=>sb)}});
+
+// Pizza Yard Edge Data API
+// Staff database operations are routed through an Edge Function so a PostgREST
+// "JWT issued at future" clock-skew error cannot block the staff dashboard.
+const PIZZA_YARD_EDGE_FUNCTION = `${SUPABASE_URL}/functions/v1/pizza-yard-staff-api`;
+
+function makePizzaYardEdgeClient(authClient){
+  const allowedOps = new Set(["select","insert","update","upsert","rpc"]);
+  function builder(table){
+    let op="select", values=null, selectText="*", filters=[], orders=[], limitValue=null, conflict=null, singleMode=null, orFilter=null;
+    const api={
+      select(v="*"){op=op==="select"?"select":op;selectText=v;return api},
+      insert(v){op="insert";values=v;return api},
+      update(v){op="update";values=v;return api},
+      upsert(v,opts={}){op="upsert";values=v;conflict=opts.onConflict||null;return api},
+      eq(c,v){filters.push({column:c,operator:"eq",value:v});return api},
+      neq(c,v){filters.push({column:c,operator:"neq",value:v});return api},
+      or(v){orFilter=v;return api},
+      order(c,opts={}){orders.push({column:c,ascending:opts.ascending!==false});return api},
+      limit(v){limitValue=v;return api},
+      single(){singleMode="single";return api},
+      maybeSingle(){singleMode="maybeSingle";return api},
+      then(resolve,reject){return execute().then(resolve,reject)},
+      catch(reject){return execute().catch(reject)}
+    };
+    async function execute(){
+      if(!allowedOps.has(op)) return {data:null,error:{message:"Unsupported Edge operation."}};
+      const {data:{session}}=await authClient.auth.getSession();
+      if(!session?.access_token) return {data:null,error:{message:"Staff session expired. Please sign in again.",code:"PGRST401"}};
+      const payload={op,table,select:selectText,values,filters,orders,limit:limitValue,conflict,single:singleMode,or:orFilter};
+      try{
+        const res=await fetch(PIZZA_YARD_EDGE_FUNCTION,{
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "apikey":SUPABASE_PUBLISHABLE_KEY,
+            "Authorization":`Bearer ${session.access_token}`
+          },
+          body:JSON.stringify(payload)
+        });
+        let body=null; try{body=await res.json()}catch{}
+        if(!res.ok) return {data:null,error:body?.error||{message:body?.message||`Edge API request failed (${res.status})`,code:body?.code}};
+        return {data:body?.data??null,error:body?.error??null,count:body?.count??null};
+      }catch(error){return {data:null,error:{message:error?.message||"Edge API request failed."}}}
+    }
+    return api;
+  }
+  return {
+    from(table){return builder(table)},
+    rpc(name,args={}) {
+      return (async()=>{
+        const {data:{session}}=await authClient.auth.getSession();
+        if(!session?.access_token) return {data:null,error:{message:"Staff session expired. Please sign in again.",code:"PGRST401"}};
+        try{
+          const res=await fetch(PIZZA_YARD_EDGE_FUNCTION,{
+            method:"POST",
+            headers:{"Content-Type":"application/json","apikey":SUPABASE_PUBLISHABLE_KEY,"Authorization":`Bearer ${session.access_token}`},
+            body:JSON.stringify({op:"rpc",rpc:name,args})
+          });
+          let body=null;try{body=await res.json()}catch{}
+          if(!res.ok)return {data:null,error:body?.error||{message:body?.message||`Edge API request failed (${res.status})`,code:body?.code}};
+          return {data:body?.data??null,error:body?.error??null};
+        }catch(error){return {data:null,error:{message:error?.message||"Edge API request failed."}}}
+      })();
+    }
+  };
+}
+
+const pizzaYardEdgeClient=makePizzaYardEdgeClient(sb);
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={items:[],events:[],counts:[],search:"",category:"",status:""};
 
@@ -95,9 +164,9 @@ function filtered(){
 }
 async function loadAll(){
   const [ir,er,cr,ec]=await Promise.all([
-    sb.from("inventory_items").select("*").order("category").order("name"),
-    sb.from("inventory_stock_events").select("*").order("created_at",{ascending:false}).limit(60),
-    sb.from("inventory_daily_counts").select("*").eq("count_date",new Date().toISOString().slice(0,10)).order("created_at",{ascending:false}),
+    pizzaYardEdgeClient.from("inventory_items").select("*").order("category").order("name"),
+    pizzaYardEdgeClient.from("inventory_stock_events").select("*").order("created_at",{ascending:false}).limit(60),
+    pizzaYardEdgeClient.from("inventory_daily_counts").select("*").eq("count_date",new Date().toISOString().slice(0,10)).order("created_at",{ascending:false}),
     null
   ]);
   if(ir.error){alert("Inventory database is not ready. Run the Inventory SQL section first.");console.error(ir.error);return}
@@ -187,7 +256,7 @@ async function saveItem(e){
     notes:$("#item-notes").value.trim()||null,weight_tracking:$("#item-weight-tracking").checked
   };
   if(!payload.name)return;
-  const q=id?sb.from("inventory_items").update(payload).eq("id",id):sb.from("inventory_items").insert(payload);
+  const q=id?pizzaYardEdgeClient.from("inventory_items").update(payload).eq("id",id):pizzaYardEdgeClient.from("inventory_items").insert(payload);
   const {error}=await q;
   if(error){alert(error.message);return}
   $("#item-dialog").close();loadAll();
@@ -203,10 +272,10 @@ async function saveStock(e){
   const i=state.items.find(x=>x.id===$("#stock-item-id").value);if(!i)return;
   const change=num($("#stock-qty-change").value), after=Math.max(0,num(i.quantity)+change), wa=$("#stock-weight-after").value===""?i.weight:num($("#stock-weight-after").value);
   const type=$("#stock-type").value;
-  const {error}=await sb.from("inventory_items").update({quantity:after,weight:wa}).eq("id",i.id);
+  const {error}=await pizzaYardEdgeClient.from("inventory_items").update({quantity:after,weight:wa}).eq("id",i.id);
   if(error){alert(error.message);return}
   const user=(await sb.auth.getUser()).data.user;
-  await sb.from("inventory_stock_events").insert({item_id:i.id,event_type:type,quantity_before:i.quantity,quantity_after:after,weight_before:i.weight,weight_after:wa,reason:type,note:$("#stock-note").value.trim()||null,staff_user_id:user?.id||null});
+  await pizzaYardEdgeClient.from("inventory_stock_events").insert({item_id:i.id,event_type:type,quantity_before:i.quantity,quantity_after:after,weight_before:i.weight,weight_after:wa,reason:type,note:$("#stock-note").value.trim()||null,staff_user_id:user?.id||null});
   $("#stock-dialog").close();loadAll();
 }
 function openCount(id){
@@ -229,11 +298,11 @@ async function saveCount(e){
   const i=state.items.find(x=>x.id===$("#count-item-id").value);if(!i)return;
   const q=num($("#count-qty").value), w=$("#count-weight").value===""?null:num($("#count-weight").value), today=new Date().toISOString().slice(0,10);
   const user=(await sb.auth.getUser()).data.user;
-  const {error}=await sb.from("inventory_daily_counts").upsert({count_date:today,item_id:i.id,quantity:q,weight:w,note:$("#count-note").value.trim()||null,staff_user_id:user?.id||null},{onConflict:"count_date,item_id"});
+  const {error}=await pizzaYardEdgeClient.from("inventory_daily_counts").upsert({count_date:today,item_id:i.id,quantity:q,weight:w,note:$("#count-note").value.trim()||null,staff_user_id:user?.id||null},{onConflict:"count_date,item_id"});
   if(error){alert(error.message);return}
-  const uq=await sb.from("inventory_items").update({quantity:q,weight:w}).eq("id",i.id);
+  const uq=await pizzaYardEdgeClient.from("inventory_items").update({quantity:q,weight:w}).eq("id",i.id);
   if(uq.error){alert(uq.error.message);return}
-  await sb.from("inventory_stock_events").insert({item_id:i.id,event_type:"count",quantity_before:i.quantity,quantity_after:q,weight_before:i.weight,weight_after:w,reason:"daily_count",note:$("#count-note").value.trim()||null,staff_user_id:user?.id||null});
+  await pizzaYardEdgeClient.from("inventory_stock_events").insert({item_id:i.id,event_type:"count",quantity_before:i.quantity,quantity_after:q,weight_before:i.weight,weight_after:w,reason:"daily_count",note:$("#count-note").value.trim()||null,staff_user_id:user?.id||null});
   $("#count-dialog").close();loadAll();
 }
 async function handleItemAction(a,id){const i=state.items.find(x=>x.id===id);if(a==="edit")openItem(i);if(a==="stock")openStock(id);if(a==="count")openCount(id)}
