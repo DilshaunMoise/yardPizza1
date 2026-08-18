@@ -1,50 +1,31 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-import postgres from "npm:postgres@3.4.7";
 import { compactVerify, createRemoteJWKSet, decodeJwt } from "npm:jose@5.10.0";
+import postgres from "npm:postgres@3.4.7";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const PUBLISHABLE_KEYS = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
-const SECRET_KEYS = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
-const PUBLISHABLE_KEY = PUBLISHABLE_KEYS.default || Deno.env.get("SUPABASE_ANON_KEY") || "";
-const SECRET_KEY = SECRET_KEYS.default || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const DATABASE_URL = Deno.env.get("SUPABASE_DB_URL") || "";
+const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL") || "";
+const SUPABASE_SECRET_KEYS = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+const SECRET_KEY = SUPABASE_SECRET_KEYS.default || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-if (!SUPABASE_URL || !SECRET_KEY || !DATABASE_URL) {
-  throw new Error("Missing Supabase Edge Function server configuration.");
-}
+if (!SUPABASE_URL || !SUPABASE_DB_URL) throw new Error("Missing Supabase Edge Function database configuration.");
 
-// IMPORTANT: database work is done over the server-side Postgres connection,
-// not PostgREST. This completely removes the PGRST303/JWT-issued-at-future
-// clock-skew failure from staff database operations.
-const db = postgres(DATABASE_URL, {
+// IMPORTANT: all staff database work goes directly to Postgres. This avoids the
+// Supabase REST/PostgREST JWT validation path that is currently rejecting valid
+// sessions with "JWT issued at future" because of project clock skew.
+const sql = postgres(SUPABASE_DB_URL, {
   ssl: "require",
   max: 1,
   idle_timeout: 20,
   connect_timeout: 10,
+  prepare: false,
 });
 
-// Used only as a last-resort Auth lookup if local JWT verification cannot
-// establish an identity. It is never exposed to the browser.
-const authAdmin = createClient(SUPABASE_URL, SECRET_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
-const jwks = createRemoteJWKSet(
-  new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`)
-);
+const jwks = createRemoteJWKSet(new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
 
 const ALLOWED_TABLES = new Set([
-  "pizza_orders",
-  "breakfast_orders",
-  "pizza_topping_availability",
-  "pizza_reviews",
-  "inventory_items",
-  "inventory_stock_events",
-  "inventory_daily_counts",
+  "pizza_orders", "breakfast_orders", "pizza_topping_availability", "pizza_reviews",
+  "inventory_items", "inventory_stock_events", "inventory_daily_counts",
 ]);
-
 const ALLOWED_RPCS = new Set(["verify_reward_code"]);
-
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type",
@@ -52,266 +33,152 @@ const cors = {
   "Content-Type": "application/json",
 };
 
-function reply(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: cors });
-}
-
+function reply(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: cors }); }
 function bearer(req: Request) {
   const h = req.headers.get("authorization") || "";
   return h.startsWith("Bearer ") ? h.slice(7) : "";
 }
-
-function identifier(v: unknown) {
-  const s = String(v ?? "");
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(s)) throw new Error("Invalid database identifier.");
-  return s;
+function ident(v: string) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(v)) throw new Error("Invalid database identifier.");
+  return `"${v}"`;
 }
-
-function selectExpression(v: unknown) {
-  const s = String(v || "*");
-  // The dashboard only needs plain columns / *; deliberately reject SQL.
-  if (s === "*") return s;
-  if (!/^[A-Za-z0-9_\s,.*]+$/.test(s)) throw new Error("Invalid select expression.");
-  return s;
+function selectSql(v: string) {
+  if (v === "*") return "*";
+  return v.split(",").map(x => ident(x.trim())).join(", ");
+}
+function oneOrNull(rows: any[], mode: string | null) {
+  if (mode === "single" && rows.length !== 1) throw new Error(rows.length ? "Multiple rows returned." : "No rows returned.");
+  return mode ? (rows[0] || null) : rows;
 }
 
 async function identifyStaff(req: Request) {
   const token = bearer(req);
   if (!token) throw new Error("Missing staff session.");
-
   let userId: string | null = null;
 
   try {
     const { protectedHeader } = await compactVerify(token, jwks);
-    if (!protectedHeader.alg || protectedHeader.alg === "none") {
-      throw new Error("Unsupported JWT algorithm.");
-    }
-
+    if (!protectedHeader.alg || protectedHeader.alg === "none") throw new Error("Unsupported JWT algorithm.");
     const payload = decodeJwt(token);
     const now = Math.floor(Date.now() / 1000);
     const tolerance = 300;
-
     if (payload.iss !== `${SUPABASE_URL}/auth/v1`) throw new Error("Invalid JWT issuer.");
-
     const aud = payload.aud;
-    if (!(aud === "authenticated" || (Array.isArray(aud) && aud.includes("authenticated")))) {
-      throw new Error("Invalid JWT audience.");
-    }
-
-    // Do NOT validate iat. The user's token has already been proven valid and
-    // its iat is earlier than the browser's current time. Only exp/nbf matter.
-    if (typeof payload.exp !== "number" || payload.exp <= now - tolerance) {
-      throw new Error("Staff session has expired.");
-    }
-    if (typeof payload.nbf === "number" && payload.nbf > now + tolerance) {
-      throw new Error("Staff session is not active yet.");
-    }
-
+    if (!(aud === "authenticated" || (Array.isArray(aud) && aud.includes("authenticated")))) throw new Error("Invalid JWT audience.");
+    if (typeof payload.exp !== "number" || payload.exp <= now - tolerance) throw new Error("Staff session has expired.");
+    if (typeof payload.nbf === "number" && payload.nbf > now + tolerance) throw new Error("Staff session is not active yet.");
     userId = typeof payload.sub === "string" ? payload.sub : null;
-  } catch (verificationError) {
-    try {
-      const { data, error } = await authAdmin.auth.getUser(token);
-      if (!error) userId = data.user?.id || null;
-    } catch {
-      // Keep the clean invalid-session response below.
-    }
+  } catch {
+    // Do not call Auth.getUser here: that endpoint also validates JWT time claims.
+    // The signature above is enough to establish the authenticated user ID.
   }
 
   if (!userId) throw new Error("Invalid staff session.");
 
-  // Direct Postgres lookup. This cannot be rejected by PostgREST's JWT clock.
-  const staffRows = await db`
-    select user_id
-    from public.staff_users
-    where user_id = ${userId}
-    limit 1
-  `;
-
-  if (!staffRows.length) throw new Error("This account is not authorized as Pizza Yard staff.");
+  const staff = await sql`select user_id from public.staff_users where user_id = ${userId} limit 1`;
+  if (!staff.length) throw new Error("This account is not authorized as Pizza Yard staff.");
   return userId;
 }
 
-function buildWhere(body: any) {
-  const clauses: string[] = [];
-  const params: any[] = [];
-
+function addFilters(parts: string[], params: any[], body: any) {
   for (const f of body.filters || []) {
     if (!f?.column || !["eq", "neq"].includes(f.operator)) continue;
-    const col = identifier(f.column);
-    clauses.push(`${col} ${f.operator === "eq" ? "=" : "<>"} $${params.length + 1}`);
+    parts.push(`${ident(String(f.column))} ${f.operator === "eq" ? "=" : "<>"} $${params.length + 1}`);
     params.push(f.value);
   }
-
   if (body.or) {
-    const raw = String(body.or);
-    const parts = raw.split(",").filter(Boolean);
-    const orParts: string[] = [];
-    for (const part of parts) {
-      const m = part.match(/^([A-Za-z_][A-Za-z0-9_]*)\.(eq|neq|ilike|like)\.(.*)$/);
-      if (!m) throw new Error("Invalid OR filter.");
-      const col = identifier(m[1]);
-      const op = m[2] === "eq" ? "=" : m[2] === "neq" ? "<>" : m[2].toUpperCase();
-      let value = m[3];
-      if (op === "ILIKE" || op === "LIKE") value = value.replace(/%/g, "%");
-      orParts.push(`${col} ${op} $${params.length + 1}`);
-      params.push(value);
+    // Supports the PostgREST OR form used by this project, e.g.
+    // customer_name.ilike.%term%,customer_phone.ilike.%term%
+    const pieces = String(body.or).split(",").map((x: string) => x.trim()).filter(Boolean);
+    const clauses: string[] = [];
+    for (const piece of pieces) {
+      const m = piece.match(/^([A-Za-z_][A-Za-z0-9_]*)\.ilike\.(.*)$/);
+      if (!m) throw new Error("Unsupported OR filter.");
+      let value = m[2];
+      if (value.startsWith("%") && value.endsWith("%")) value = value.slice(1, -1);
+      clauses.push(`${ident(m[1])} ILIKE $${params.length + 1}`);
+      params.push(`%${value}%`);
     }
-    if (orParts.length) clauses.push(`(${orParts.join(" OR ")})`);
+    if (clauses.length) parts.push(`(${clauses.join(" OR ")})`);
   }
-
-  return { clauses, params };
 }
-
-function applySingle(data: any[], mode: string | null) {
-  if (mode === "single") {
-    if (data.length !== 1) throw new Error(data.length ? "Multiple rows returned." : "No rows returned.");
-    return data[0];
-  }
-  if (mode === "maybeSingle") {
-    if (data.length > 1) throw new Error("Multiple rows returned.");
-    return data[0] ?? null;
-  }
-  return data;
+function addOrder(parts: string[], body: any) {
+  for (const o of body.orders || []) if (o?.column) parts.push(`ORDER BY ${ident(String(o.column))} ${o.ascending === false ? "ASC" : "ASC"}`);
+  // Rebuild descending correctly without trusting arbitrary SQL.
+  const orders = (body.orders || []).filter((o: any) => o?.column).map((o: any) => `${ident(String(o.column))} ${o.ascending === false ? "DESC" : "ASC"}`);
+  if (orders.length) parts.push(`ORDER BY ${orders.join(", ")}`);
 }
 
 async function runTable(body: any) {
-  const table = identifier(body.table);
+  const table = String(body.table || "");
   if (!ALLOWED_TABLES.has(table)) throw new Error("Table is not allowed.");
-
   const op = body.op;
-  const select = selectExpression(body.select || "*");
+  const select = selectSql(body.select || "*");
+  const params: any[] = [];
 
   if (op === "select") {
-    const { clauses, params } = buildWhere(body);
-    let text = `select ${select} from public.${table}`;
-    if (clauses.length) text += ` where ${clauses.join(" and ")}`;
+    const where: string[] = [];
+    addFilters(where, params, body);
+    const tail: string[] = [];
+    if (where.length) tail.push(`WHERE ${where.join(" AND ")}`);
+    const orders = (body.orders || []).filter((o: any) => o?.column).map((o: any) => `${ident(String(o.column))} ${o.ascending === false ? "DESC" : "ASC"}`);
+    if (orders.length) tail.push(`ORDER BY ${orders.join(", ")}`);
+    if (Number.isInteger(body.limit) && body.limit > 0) { params.push(Math.min(body.limit, 500)); tail.push(`LIMIT $${params.length}`); }
+    let rows = await sql.unsafe(`SELECT ${select} FROM public.${ident(table)} ${tail.join(" ")}`, params);
+    return { data: oneOrNull(rows, body.single || null), count: null };
+  }
 
-    for (const o of body.orders || []) {
-      if (o?.column) text += ` order by ${identifier(o.column)} ${o.ascending === false ? "desc" : "asc"}`;
+  if (op === "insert" || op === "update" || op === "upsert") {
+    const values = body.values;
+    if (!values || typeof values !== "object" || Array.isArray(values)) throw new Error("Invalid values.");
+    let text = "";
+    if (op === "insert") {
+      const cols = Object.keys(values);
+      if (!cols.length) throw new Error("No values supplied.");
+      const ph = cols.map((c, i) => { params.push(values[c]); return `$${params.length}`; });
+      text = `INSERT INTO public.${ident(table)} (${cols.map(ident).join(", ")}) VALUES (${ph.join(", ")})`;
+    } else {
+      const sets = Object.keys(values).map(c => { params.push(values[c]); return `${ident(c)} = $${params.length}`; });
+      text = `UPDATE public.${ident(table)} SET ${sets.join(", ")}`;
+      const where: string[] = [];
+      addFilters(where, params, body);
+      if (where.length) text += ` WHERE ${where.join(" AND ")}`;
     }
-    if (Number.isInteger(body.limit) && body.limit > 0) text += ` limit ${Math.min(body.limit, 500)}`;
-
-    const rows = await db.unsafe(text, params);
-    return { data: applySingle(rows, body.single || null), count: rows.length };
-  }
-
-  const values = body.values;
-  if (!values || typeof values !== "object") throw new Error("Database values are required.");
-
-  if (op === "insert") {
-    const rows = Array.isArray(values) ? values : [values];
-    if (!rows.length) return { data: [] };
-    const cols = Object.keys(rows[0]).map(identifier);
-    if (!cols.length) throw new Error("Insert values are empty.");
-    for (const row of rows) {
-      const rowCols = Object.keys(row).map(identifier);
-      if (rowCols.join(",") !== cols.join(",")) throw new Error("Insert rows must have matching columns.");
+    if (op === "upsert") {
+      const cols = Object.keys(values);
+      const ph = params.splice(0, params.length).map((_: any, i: number) => `$${i + 1}`);
+      for (const c of cols) params.push(values[c]);
+      const conflict = String(body.conflict || "").split(",").map(x => x.trim()).filter(Boolean);
+      if (!conflict.length) throw new Error("Upsert conflict columns are required.");
+      const updates = cols.filter(c => !conflict.includes(c)).map(c => `${ident(c)} = EXCLUDED.${ident(c)}`);
+      text = `INSERT INTO public.${ident(table)} (${cols.map(ident).join(", ")}) VALUES (${ph.join(", ")}) ON CONFLICT (${conflict.map(ident).join(", ")}) DO ${updates.length ? `UPDATE SET ${updates.join(", ")}` : "NOTHING"}`;
     }
-    const params = rows.flatMap(row => cols.map(c => row[c]));
-    const placeholders = rows.map((_, i) =>
-      `(${cols.map((_, j) => `$${i * cols.length + j + 1}`).join(",")})`
-    ).join(",");
-    let text = `insert into public.${table} (${cols.join(",")}) values ${placeholders}`;
-    if (body.select) text += ` returning ${select}`;
-    const result = await db.unsafe(text, params);
-    return { data: body.select ? applySingle(result, body.single || null) : null };
+    if (body.select) text += ` RETURNING ${select}`;
+    const rows = body.select ? await sql.unsafe(text, params) : await sql.unsafe(`${text} RETURNING ${select}`, params);
+    return { data: oneOrNull(rows, body.single || null) };
   }
-
-  if (op === "update") {
-    const cols = Object.keys(values).map(identifier);
-    if (!cols.length) throw new Error("Update values are empty.");
-    const { clauses, params } = buildWhere(body);
-    const setParts = cols.map((c, i) => `${c} = $${params.length + i + 1}`);
-    const allParams = [...params, ...cols.map(c => values[c])];
-    let text = `update public.${table} set ${setParts.join(", ")}`;
-    if (clauses.length) text += ` where ${clauses.join(" and ")}`;
-    if (body.select) text += ` returning ${select}`;
-    const result = await db.unsafe(text, allParams);
-    return { data: body.select ? applySingle(result, body.single || null) : null };
-  }
-
-  if (op === "upsert") {
-    const rows = Array.isArray(values) ? values : [values];
-    if (!rows.length) return { data: [] };
-    const cols = Object.keys(rows[0]).map(identifier);
-    const params = rows.flatMap(row => cols.map(c => row[c]));
-    const placeholders = rows.map((_, i) =>
-      `(${cols.map((_, j) => `$${i * cols.length + j + 1}`).join(",")})`
-    ).join(",");
-    const conflictCols = body.conflict
-      ? String(body.conflict).split(",").map(identifier)
-      : [];
-    const updates = cols
-      .filter(c => !conflictCols.includes(c))
-      .map(c => `${c}=excluded.${c}`);
-
-    let text = `insert into public.${table} (${cols.join(",")}) values ${placeholders}`;
-    if (conflictCols.length) {
-      text += updates.length
-        ? ` on conflict (${conflictCols.join(",")}) do update set ${updates.join(",")}`
-        : ` on conflict (${conflictCols.join(",")}) do nothing`;
-    }
-    if (body.select) text += ` returning ${select}`;
-    const result = await db.unsafe(text, params);
-    return { data: body.select ? applySingle(result, body.single || null) : null };
-  }
-
   throw new Error("Unsupported database operation.");
 }
 
-async function runRpc(body: any, staffUserId: string) {
+async function runRpc(body: any) {
   if (!ALLOWED_RPCS.has(body.rpc)) throw new Error("RPC is not allowed.");
-
-  if (body.rpc === "verify_reward_code") {
-    const code = String(body.args?.p_code || "").trim();
-    if (!code) throw new Error("Reward code is required.");
-
-    // Reproduce verify_reward_code securely using the already verified staff id.
-    const rows = await db`
-      select rr.code, rr.reward_key, rm.customer_name, rm.customer_phone
-      from public.rewards_redemptions rr
-      join public.rewards_members rm on rm.id = rr.member_id
-      where upper(rr.code) = upper(${code})
-        and rr.redeemed_at is null
-      limit 1
-    `;
-    if (!rows.length) throw new Error("Reward code is invalid or already used.");
-
-    const r: any = rows[0];
-    await db`
-      update public.rewards_redemptions
-      set redeemed_at = now(), verified_by = ${staffUserId}
-      where code = ${r.code} and redeemed_at is null
-    `;
-
-    return {
-      data: [{
-        reward_label: r.reward_key === "five_off" ? "$5 OFF" : r.reward_key === "ten_off" ? "$10 OFF" : 'FREE 12" PIZZA',
-        customer_name: r.customer_name,
-        customer_phone: r.customer_phone,
-        code: r.code,
-      }],
-    };
-  }
-
-  throw new Error("Unsupported RPC.");
+  const code = body.args?.p_code;
+  const rows = await sql`select * from public.verify_reward_code(${code})`;
+  return { data: rows.length === 1 ? rows[0] : rows };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ error: { message: "POST required." } }, 405);
-
   try {
-    const staffUserId = await identifyStaff(req);
+    await identifyStaff(req);
     const body = await req.json();
-    const result = body.op === "rpc"
-      ? await runRpc(body, staffUserId)
-      : await runTable(body);
+    const result = body.op === "rpc" ? await runRpc(body) : await runTable(body);
     return reply(result);
   } catch (error: any) {
     const message = error?.message || "Staff API request failed.";
     console.error("pizza-yard-staff-api:", message);
-    const status = /Missing|Invalid|not authorized|expired|not active/i.test(message) ? 401 : 400;
+    const status = /Missing|Invalid|not authorized|expired/i.test(message) ? 401 : 400;
     return reply({ error: { message, code: error?.code || "PIZZA_YARD_EDGE_ERROR" } }, status);
   }
 });
