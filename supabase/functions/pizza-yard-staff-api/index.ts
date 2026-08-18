@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { jwtVerify, createRemoteJWKSet } from "npm:jose@5.10.0";
+import { compactVerify, createRemoteJWKSet, decodeJwt } from "npm:jose@5.10.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const PUBLISHABLE_KEYS = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
@@ -53,24 +53,49 @@ async function identifyStaff(req: Request) {
 
   let userId: string | null = null;
 
-  // Verify the JWT directly. We intentionally do not reject a future `iat`;
-  // that is the PostgREST clock-skew failure this function is designed to bypass.
+  // Verify the token signature and the security-critical issuer/audience/expiry
+  // claims, but intentionally do NOT let a bad/future `iat` claim block staff
+  // access. This project has been returning PGRST303/JWT-issued-at-future even
+  // when the client's clock is correct. We therefore decode the claims only
+  // after cryptographically verifying the JWT signature, then validate the
+  // claims we actually rely on ourselves.
   try {
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer: `${SUPABASE_URL}/auth/v1`,
-      audience: "authenticated",
-      clockTolerance: 300,
-    });
+    const { protectedHeader } = await compactVerify(token, jwks);
+    if (!protectedHeader.alg || protectedHeader.alg === "none") {
+      throw new Error("Unsupported JWT algorithm.");
+    }
+
+    const payload = decodeJwt(token);
+    const now = Math.floor(Date.now() / 1000);
+    const tolerance = 300;
+
+    if (payload.iss !== `${SUPABASE_URL}/auth/v1`) {
+      throw new Error("Invalid JWT issuer.");
+    }
+
+    const aud = payload.aud;
+    if (!(aud === "authenticated" || (Array.isArray(aud) && aud.includes("authenticated")))) {
+      throw new Error("Invalid JWT audience.");
+    }
+
+    if (typeof payload.exp !== "number" || payload.exp <= now - tolerance) {
+      throw new Error("Staff session has expired.");
+    }
+
+    if (typeof payload.nbf === "number" && payload.nbf > now + tolerance) {
+      throw new Error("Staff session is not active yet.");
+    }
+
     userId = typeof payload.sub === "string" ? payload.sub : null;
-  } catch {
-    // Fallback to Auth's getUser endpoint. Auth is accepting the same sessions
-    // in this project even though PostgREST is rejecting their future `iat`.
-    if (PUBLISHABLE_KEY) {
-      const authClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const { data, error } = await authClient.auth.getUser(token);
+  } catch (signatureError) {
+    // Last-resort verification through Supabase Auth. This is only reached if
+    // the signature/claim verification above cannot establish a user identity.
+    // It is intentionally not used for the known future-iat failure path.
+    try {
+      const { data, error } = await admin.auth.getUser(token);
       if (!error) userId = data.user?.id || null;
+    } catch {
+      // Preserve the clean invalid-session error below.
     }
   }
 
