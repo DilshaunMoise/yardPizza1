@@ -110,7 +110,7 @@ function render(){
   const period=document.querySelector('#period-copy');
   const cutoff=document.querySelector('#cutoff-note');
   const menu=document.querySelector('#menu');
-  if(period) period.textContent=`Pre-order now for ${dateLabel(target)}. Order ahead for Sunday breakfast — name and phone are optional.`;
+  if(period) period.textContent=`Pre-order now for ${dateLabel(target)}. Name and phone number are required to confirm your Sunday breakfast order.`;
   if(cutoff) cutoff.textContent='Breakfast pre-orders are available throughout the week. Orders for the next Sunday close at the configured cutoff.';
   if(!menu)return;
 
@@ -162,9 +162,13 @@ function selectedItems(){
   });
 }
 
-async function submitBreakfastOrder(name,phone,notes,selected,total){
+async function submitBreakfastOrder(name,phone,notes,selected,total,birthday){
   if(!supabaseClient) throw new Error('Breakfast service is unavailable because Supabase did not load.');
-  const {data,error}=await supabaseClient.from('breakfast_orders').insert({
+  // Do not request the inserted row back here. Anonymous customers have INSERT
+  // permission but intentionally do not have SELECT permission on breakfast_orders.
+  // A PostgREST .select() after INSERT therefore makes a valid order look like a
+  // failed submission. The dashboard can read the order through the staff API.
+  const {error}=await supabaseClient.from('breakfast_orders').insert({
     target_sunday:target.toISOString().slice(0,10),
     customer_name:name,
     customer_phone:phone,
@@ -173,7 +177,7 @@ async function submitBreakfastOrder(name,phone,notes,selected,total){
     special_instructions:notes||null,
     customer_birthday:birthday||null,
     status:'new'
-  }).select('id').single();
+  });
   if(error)throw error;
   if(document.querySelector('#join-rewards')?.checked && phone){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null,p_birthday:birthday||null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
   return data;
@@ -183,9 +187,12 @@ document.querySelector('#breakfast-form')?.addEventListener('submit',async e=>{
   e.preventDefault();
   const error=document.querySelector('#error');
   if(error)error.textContent='';
-  const name=document.querySelector('#customer-name')?.value.trim()||'Walk-in Customer';
+  const name=document.querySelector('#customer-name')?.value.trim()||'';
   const phoneRaw=document.querySelector('#customer-phone')?.value.trim()||'';
-  const phone=phoneRaw ? phoneRaw : null;
+  const phone=phoneRaw ? phoneRaw : '';
+  if(!name){if(error)error.textContent='Full name is required.';document.querySelector('#customer-name')?.focus();return;}
+  if(!phone){if(error)error.textContent='Phone number is required.';document.querySelector('#customer-phone')?.focus();return;}
+  if(!/^\d{7}$/.test(phone.replace(/[\s()-]/g,''))){if(error)error.textContent='Enter a valid 7-digit Saint Lucia phone number.';document.querySelector('#customer-phone')?.focus();return;}
   const notes=document.querySelector('#notes')?.value.trim()||'';
   const birthday=document.querySelector('#birthday')?.value||'';
   const selected=selectedItems();
@@ -196,11 +203,11 @@ document.querySelector('#breakfast-form')?.addEventListener('submit',async e=>{
   const submit=document.querySelector('#submit');
   if(submit){submit.disabled=true;submit.textContent='Submitting…';}
   try{
-    const data=await submitBreakfastOrder(name,phone,notes,selected,total);
+    await submitBreakfastOrder(name,phone,notes,selected,total,birthday);
     document.querySelector('#breakfast-form')?.classList.add('hidden');
     document.querySelector('#success')?.classList.remove('hidden');
     const msg=document.querySelector('#success-text');
-    if(msg)msg.textContent=`Order ${String(data.id).replaceAll('-','').slice(0,6).toUpperCase()} is saved for ${dateLabel(target)}. Pizza Yard has received your pre-order.`;
+    if(msg)msg.textContent=`Your breakfast pre-order is saved for ${dateLabel(target)}. Pizza Yard has received your order and will use your name and phone number to confirm it.`;
   }catch(dbError){
     console.error('Breakfast order submission failed:',dbError);
     if(error)error.textContent='We could not submit the order. Please try again.';

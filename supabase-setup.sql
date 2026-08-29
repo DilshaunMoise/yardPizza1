@@ -726,7 +726,16 @@ create policy "Staff can manage menu items" on public.menu_items for all to auth
 using(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())))
 with check(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
 
--- Pizza Yard breakfast contact fields are optional for walk-in orders.
-alter table if exists public.breakfast_orders alter column customer_name drop not null;
-alter table if exists public.breakfast_orders alter column customer_phone drop not null;
+-- Pizza Yard breakfast contact fields are required. Existing blank values are
+-- preserved safely as Walk-in Customer / Unknown before enforcing NOT NULL.
+do $$ begin
+  update public.breakfast_orders
+  set customer_name=coalesce(nullif(trim(customer_name),''),'Walk-in Customer')
+  where customer_name is null or trim(customer_name)='';
+  update public.breakfast_orders
+  set customer_phone=coalesce(nullif(trim(customer_phone),''),'Unknown')
+  where customer_phone is null or trim(customer_phone)='';
+  alter table public.breakfast_orders alter column customer_name set not null;
+  alter table public.breakfast_orders alter column customer_phone set not null;
+exception when undefined_table then null; end $$;
 

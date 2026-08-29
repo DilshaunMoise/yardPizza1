@@ -393,8 +393,16 @@ function validateForm() {
   clearErrors();
   let valid = true;
 
-  if (elements.phone.value.trim() && !isValidPhone(elements.phone.value)) {
-    $("#phone-error").textContent = "Enter a valid 7-digit Saint Lucia phone number, or leave it blank.";
+  if (!elements.name.value.trim()) {
+    $("#name-error").textContent = "Full name is required.";
+    valid = false;
+  }
+
+  if (!elements.phone.value.trim()) {
+    $("#phone-error").textContent = "Phone number is required.";
+    valid = false;
+  } else if (!isValidPhone(elements.phone.value)) {
+    $("#phone-error").textContent = "Enter a valid 7-digit Saint Lucia phone number.";
     valid = false;
   }
 
@@ -425,7 +433,7 @@ function validateForm() {
 
 function buildOrderDetails() {
   const order = calculateOrder();
-  const customerName = elements.name.value.trim() || "Walk-in Customer";
+  const customerName = elements.name.value.trim();
   const customerPhone = normalizeSaintLuciaPhone(elements.phone.value);
   const customerEmail = elements.email.value.trim();
   const address = elements.address.value.trim();
@@ -743,10 +751,6 @@ async function handleSubmit(event) {
   }
 }
 
-async function loadDrinkMenu(){
-  if(!window.pizzaYardSupabase)return;
-  try{const {data,error}=await window.pizzaYardSupabase.from('menu_items').select('id,price,available').eq('category','Drinks');if(error||!data)return;data.forEach(x=>{if(x.id in state.drinkPrices){state.drinkPrices[x.id]=Number(x.price||0);if(x.available===false)state.drinkPrices[x.id]=0;}});document.querySelectorAll('[data-extra-price]').forEach(e=>{const k=e.dataset.extraPrice;e.textContent=money(state.drinkPrices[k]||0)});updateUI();}catch(e){console.warn('Drink menu could not be loaded:',e)}}
-
 async function requestBackInStock(topping){
   const email=prompt(`Notify me when ${topping} is back in stock. Enter your email (or Cancel):`);
   if(email===null)return;
@@ -890,7 +894,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 // These are additive and use the existing ordering flow.
 // ============================================================
 function renderExtras(){
-  Object.keys(state.extras||{}).forEach(k=>{const n=document.querySelector(`#extra-${k}`);if(n)n.textContent=state.extras[k]||0;});
 }
 const PY_GROWTH_KEY='pizzaYardFavoritesV1';
 const PY_LAST_ORDER_KEY='pizzaYardLastOrderV1';

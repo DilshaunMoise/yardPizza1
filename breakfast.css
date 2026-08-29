@@ -6,3 +6,27 @@
 /* Breakfast-only drinks and contact fields polish */
 #customer-name,#customer-phone{border-radius:14px;}
 label em{font-size:.78rem;opacity:.7;font-style:normal;margin-left:4px;}
+
+
+/* Final customer polish + required contact details */
+:root{--py-red:#c92d2d;--py-gold:#e8a52f;--py-ink:#211b17;--py-cream:#fffaf2;}
+body{background:radial-gradient(circle at 8% 0%,rgba(232,165,47,.13),transparent 25%),radial-gradient(circle at 92% 18%,rgba(201,45,45,.09),transparent 26%),linear-gradient(180deg,#fffdf9 0%,#f7f1e8 100%);}
+.top{box-shadow:0 8px 28px rgba(36,26,17,.08);backdrop-filter:blur(10px);}
+.hero{position:relative;overflow:hidden;border:1px solid rgba(201,45,45,.10);box-shadow:0 18px 50px rgba(42,27,14,.10);}
+.hero:after{content:"";position:absolute;width:220px;height:220px;right:-80px;top:-100px;border-radius:50%;background:rgba(232,165,47,.14);filter:blur(4px);pointer-events:none;}
+.panel,.summary{box-shadow:0 14px 36px rgba(42,27,14,.08);border-color:rgba(42,27,14,.08);}
+.item{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
+.item:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(42,27,14,.10);border-color:rgba(201,45,45,.22);}
+.form-grid label,.panel>label{font-weight:800;}
+.form-grid label span{color:var(--py-red);font-size:.78em;margin-left:5px;}
+input:focus,textarea:focus{outline:3px solid rgba(232,165,47,.22);border-color:var(--py-red)!important;}
+.submit{box-shadow:0 10px 24px rgba(201,45,45,.20);transition:transform .18s ease,box-shadow .18s ease;}
+.submit:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(201,45,45,.26);}
+
+/* Final Pizza Yard breakfast polish */
+.hero{border-radius:24px;padding:38px 30px 28px;background:rgba(255,253,251,.72);backdrop-filter:blur(10px);}
+.hero h1{letter-spacing:-.035em;text-shadow:0 2px 18px rgba(33,29,25,.06);}
+.menu-grid{gap:14px}.item{background:linear-gradient(145deg,#fff 0%,#fffaf4 100%);}
+.item h3{font-size:16px}.qty button{transition:transform .15s ease,box-shadow .15s ease,background .15s ease}.qty button:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(42,27,14,.10);background:#fff7ed;}
+.panel-title>span{box-shadow:0 7px 16px rgba(201,54,45,.20)}
+@media(max-width:700px){.hero{padding:28px 20px 22px;border-radius:20px}}

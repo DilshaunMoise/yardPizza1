@@ -75,3 +75,6 @@ FINAL VALIDATION NOTE
 This package includes a corrected Business Earnings calculation for drink revenue.
 Drink revenue is derived from the saved order_details drink quantities/prices instead of an undefined variable.
 The Mac deployment helper now resolves its own folder automatically and uses Supabase API deployment with debug output.
+
+
+FINAL 2026-08-28 UPDATE: Main and breakfast customer name/phone are required. Cocoa Tea and Local Juice remain breakfast-only.

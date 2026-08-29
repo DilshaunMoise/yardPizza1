@@ -242,13 +242,13 @@
               </div>
               <div class="form-grid">
                 <div class="field">
-                  <label for="full-name">Full Name <em>Optional</em></label>
-                  <input id="full-name" name="fullName" type="text" autocomplete="name" placeholder="Walk-in Customer">
+                  <label for="full-name">Full Name <span>* Required</span></label>
+                  <input id="full-name" name="fullName" type="text" autocomplete="name" placeholder="Enter your full name" required aria-required="true">
                   <p class="field-error" id="name-error" role="alert"></p>
                 </div>
                 <div class="field">
-                  <label for="phone">Phone Number <em>Optional</em></label>
-                  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="7121777">
+                  <label for="phone">Phone Number <span>* Required</span></label>
+                  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="7121777" required aria-required="true">
                   <p class="field-error" id="phone-error" role="alert"></p>
                 </div>
                 <div class="field full-width">
@@ -306,7 +306,6 @@
               <div><span>Extra Toppings</span><strong id="summary-extra-count">0</strong></div>
               <div><span>Extra Topping Cost</span><strong id="summary-extra-cost">$0.00</strong></div>
               <div><span>Quantity</span><strong id="summary-quantity">1</strong></div>
-              <div><span>Drinks & Extras</span><strong id="summary-extras">$0.00</strong></div>
               <div><span>Delivery Fee</span><strong id="summary-delivery">$0.00</strong></div>
             </div>
 
