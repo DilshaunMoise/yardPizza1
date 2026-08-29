@@ -19,7 +19,7 @@
 <section id="dashboard-view" class="dashboard-view hidden">
 <header class="dashboard-header"><div><div class="brand"><span>🍕</span> Pizza Yard</div><h1>Live Order Dashboard</h1></div>
 <div class="header-actions"><span id="connection-status" class="connection reconnecting">● Reconnecting…</span>
-<button id="sound-toggle" class="ghost-btn" type="button" aria-pressed="true">🔊 LOUD SOUND ON</button><button id="test-sound" class="ghost-btn" type="button">Test Alert</button><button id="kitchen-toggle" class="ghost-btn" type="button" aria-pressed="false">🍕 KITCHEN MODE</button><button id="reports-toggle" class="ghost-btn" type="button">📊 REPORTS</button>
+<button id="sound-toggle" class="ghost-btn" type="button" aria-pressed="true">🔊 LOUD SOUND ON</button><button id="test-sound" class="ghost-btn" type="button">Test Alert</button><button id="kitchen-toggle" class="ghost-btn" type="button" aria-pressed="false">🍕 KITCHEN MODE</button><button id="reports-toggle" class="ghost-btn" type="button">📊 REPORTS</button><a class="ghost-btn" href="business.html">💰 BUSINESS</a>
 <button id="logout-button" class="ghost-btn" type="button">Sign Out</button></div></header>
 <div id="new-order-alert" class="new-order-alert hidden" role="status" aria-live="assertive"><strong>🍕 NEW PIZZA ORDER</strong><span id="new-order-alert-text">A new order just arrived.</span><button id="replay-order" class="alert-replay" type="button">🗣️ Replay</button></div>
 <section class="stats-grid" aria-label="Order statistics">
@@ -33,6 +33,11 @@
 <div class="report-card"><span class="eyebrow">BUSIEST TIME</span><h2>When orders peak</h2><div id="busy-report" class="busy-bars"></div></div>
 <div class="report-card"><span class="eyebrow">TOPPINGS</span><h2>Most popular</h2><div id="topping-report" class="report-list"></div></div>
 </section>
+<section class="business-snapshot" id="business-snapshot">
+  <div class="business-snapshot-head"><div><div class="eyebrow">BUSINESS EARNINGS</div><h2>💰 Completed sales</h2><p>Live snapshot from completed Pizza Yard sales.</p></div><a class="ghost-btn" href="business.html">Open Full Earnings →</a></div>
+  <div id="business-snapshot-grid" class="business-snapshot-grid"><span class="muted">Loading earnings…</span></div>
+</section>
+
 <section class="menu-settings">
 <div class="settings-head"><div><div class="eyebrow">MENU CONTROL</div><h2>Sold-out toppings</h2><p>Turn toppings off when you run out. Customers and staff will see the change.</p></div></div>
 <div id="availability-list" class="availability-list"><span class="muted">Loading topping availability…</span></div>

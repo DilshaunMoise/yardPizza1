@@ -175,7 +175,7 @@ async function updateStatus(id,status){const o0=state.orders.find(x=>x.id===id);
 function announceReady(o){if(!state.speechOn||!("speechSynthesis" in window))return;const u=new SpeechSynthesisUtterance(`Pizza Yard order ${o.order_number||""} is ready for ${o.order_type==="delivery"?"delivery":"pickup"}.`);u.rate=.9;window.speechSynthesis.cancel();window.speechSynthesis.speak(u)}
 async function loadAvailability(){const{data,error}=await pizzaYardEdgeClient.from("pizza_topping_availability").select("name,available");if(error){$("#availability-list").innerHTML='<span class="muted">Menu controls are unavailable until the database upgrade is run.</span>';return}state.availability=Object.fromEntries(data.map(r=>[r.name,r.available]));renderAvailability()}
 function renderAvailability(){$("#availability-list").innerHTML=TOPPINGS.map(t=>`<button class="availability-btn ${state.availability[t]!==false?"available":"soldout"}" data-topping="${esc(t)}"><span>${esc(t)}</span><strong>${state.availability[t]!==false?"AVAILABLE":"SOLD OUT"}</strong></button>`).join("");$$('.availability-btn').forEach(b=>b.addEventListener("click",()=>toggleAvailability(b.dataset.topping)))}
-async function toggleAvailability(name){const next=state.availability[name]===false;const{error}=await pizzaYardEdgeClient.from("pizza_topping_availability").upsert({name,available:next});if(error){showToast("Could not change topping availability.");return}state.availability[name]=next;renderAvailability();showToast(`${name} is ${next?"available":"sold out"}.`)}
+async function toggleAvailability(name){const next=state.availability[name]===false;const{error}=await pizzaYardEdgeClient.from("pizza_topping_availability").upsert({name,available:next},{onConflict:"name"});if(error){console.error("Topping availability update failed:",error);showToast("Could not change topping availability.");return}state.availability[name]=next;renderAvailability();showToast(`${name} is ${next?"available":"sold out"}.`)}
 function setupFilters(){$("#order-date")?.addEventListener("change",renderOrders);$$("#filters .filter").forEach(b=>b.addEventListener("click",()=>{state.filter=b.dataset.filter;$$('#filters .filter').forEach(x=>x.classList.toggle("active",x===b));renderOrders()}));$("#order-search")?.addEventListener("input",e=>{state.search=e.target.value;renderOrders()})}
 function setupSound(){$("#sound-toggle").addEventListener("click",()=>{state.soundOn=!state.soundOn;const b=$("#sound-toggle");b.textContent=state.soundOn?"🔊 LOUD SOUND ON":"🔕 Sound Off";b.setAttribute("aria-pressed",String(state.soundOn));if(state.soundOn)playNotification()});$("#test-sound")?.addEventListener("click",()=>{state.soundOn=true;playNotification()})}
 async function handleLogin(e){e.preventDefault();const b=$("#login-button");b.disabled=true;b.textContent="Signing in…";$("#login-error").textContent="";const{error}=await supabaseClient.auth.signInWithPassword({email:$("#login-email").value.trim(),password:$("#login-password").value});if(error)$("#login-error").textContent=error.message;b.disabled=false;b.textContent="Sign In"}
@@ -234,3 +234,23 @@ async function verifyRewardCode(e){
   const r=data[0]; msg.classList.add('success'); msg.textContent=`✅ ${r.reward_label} redeemed for ${r.customer_name} (${r.customer_phone}). Code ${r.code} is now used.`; input.value='';
 }
 document.addEventListener('DOMContentLoaded',()=>document.querySelector('#reward-verify-form')?.addEventListener('submit',verifyRewardCode));
+
+
+// Final business snapshot — additive to the existing dashboard.
+let businessSnapshotAt=0; async function renderBusinessSnapshot(){
+  const el=document.querySelector('#business-snapshot-grid'); if(!el||!supabaseClient)return;
+  if(Date.now()-businessSnapshotAt<12000)return; businessSnapshotAt=Date.now();
+  const completedPizza=(state.orders||[]).filter(o=>o.status==='completed');
+  const {data:breakfast}=await pizzaYardEdgeClient.from('breakfast_orders').select('total,status,created_at').eq('status','completed').order('created_at',{ascending:false}).limit(500);
+  const all=[...completedPizza.map(o=>({...o,_kind:'pizza'})),...(breakfast||[]).map(o=>({...o,_kind:'breakfast'}))];
+  const today=new Date();today.setHours(0,0,0,0);
+  const week=new Date(today);week.setDate(week.getDate()-((week.getDay()+6)%7));
+  const month=new Date(today.getFullYear(),today.getMonth(),1);
+  const calc=(from)=>all.filter(o=>new Date(o.created_at)>=from).reduce((s,o)=>s+Number(o.total||0),0);
+  const todaySales=calc(today),weekSales=calc(week),monthSales=calc(month),orders=all.filter(o=>new Date(o.created_at)>=month).length;
+  const pizzaCompleted=all.filter(o=>o._kind==='pizza'&&new Date(o.created_at)>=month); const drinkRev=pizzaCompleted.reduce((s,o)=>{try{const d=typeof o.order_details==='string'?JSON.parse(o.order_details):o.order_details||{};const x=d.extras||{};return s+Number(x.cocoa_tea||0)*3+Number(x.local_juice||0)*6}catch{return s}},0); const pizzaRev=pizzaCompleted.reduce((s,o)=>s+Number(o.total||0),0)-drinkRev;
+  const breakfastRev=all.filter(o=>o._kind==='breakfast'&&new Date(o.created_at)>=month).reduce((s,o)=>s+Number(o.total||0),0);
+  el.innerHTML=`<div><span>Today</span><strong>${money(todaySales)}</strong></div><div><span>This week</span><strong>${money(weekSales)}</strong></div><div><span>This month</span><strong>${money(monthSales)}</strong></div><div><span>Monthly orders</span><strong>${orders}</strong></div><div><span>Pizza revenue</span><strong>${money(pizzaRev)}</strong></div><div><span>Drink revenue</span><strong>${money(drinkRev)}</strong></div><div><span>Breakfast revenue</span><strong>${money(breakfastRev)}</strong></div>`;
+}
+const oldRenderOrdersPY=renderOrders;renderOrders=function(){oldRenderOrdersPY();renderBusinessSnapshot();};
+document.addEventListener('DOMContentLoaded',()=>setTimeout(renderBusinessSnapshot,1200));

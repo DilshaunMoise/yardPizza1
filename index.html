@@ -29,7 +29,7 @@
 
       <div class="nav-menu" id="nav-menu">
         <a href="#home">Home</a>
-        <a href="#menu">Menu</a>
+        <a href="#menu">Menu</a><a href="#picks">Popular</a>
         <a href="#builder">Build Your Pizza</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#rewards">Rewards ⭐</a><a href="#reviews">Reviews ⭐</a><a href="#contact">Contact</a>
@@ -133,7 +133,15 @@
       </div>
     </section>
 
-    <section class="section builder-section" id="builder">
+    <section class="section growth-hub" id="picks">
+  <div class="container">
+    <div class="section-heading"><p class="eyebrow">PIZZA YARD PICKS</p><h2>Popular today. <span>Easy to order.</span></h2><p>Save favorites, repeat your last order, or try one of our ready-made combos.</p></div>
+    <div id="growth-cards" class="growth-grid"></div>
+    <div id="saved-orders" class="saved-orders"></div>
+  </div>
+</section>
+
+<section class="section builder-section" id="builder">
       <div class="container">
         <div class="section-heading builder-heading">
           <p class="eyebrow">BUILD YOUR PIZZA</p>
@@ -226,6 +234,16 @@
 
             <div class="builder-divider"></div>
 
+            <section class="extras-panel" aria-label="Drinks and extras">
+              <div class="extras-heading"><div><span class="step-label">OPTIONAL EXTRAS</span><h3>Grab a drink with your pizza</h3><p>Cocoa Tea and Local Juice can be added to any pizza order.</p></div><span class="extras-badge">🥤 DRINKS</span></div>
+              <div class="extras-grid">
+                <article class="extra-card"><div><strong>☕ Cocoa Tea</strong><small>Fresh local cocoa tea</small></div><div class="extra-controls"><button type="button" data-extra-minus="cocoa_tea">−</button><output id="extra-cocoa_tea">0</output><button type="button" data-extra-plus="cocoa_tea">+</button></div><b>$3.00</b></article>
+                <article class="extra-card"><div><strong>🥤 Local Juice</strong><small>Refreshing local juice</small></div><div class="extra-controls"><button type="button" data-extra-minus="local_juice">−</button><output id="extra-local_juice">0</output><button type="button" data-extra-plus="local_juice">+</button></div><b>$6.00</b></article>
+              </div>
+            </section>
+
+            <div class="builder-divider"></div>
+
             <div class="customer-section">
               <div>
                 <span class="step-label">STEP 4</span>
@@ -233,22 +251,26 @@
               </div>
               <div class="form-grid">
                 <div class="field">
-                  <label for="full-name">Full Name <span>*</span></label>
-                  <input id="full-name" name="fullName" type="text" autocomplete="name" required>
+                  <label for="full-name">Full Name <em>Optional</em></label>
+                  <input id="full-name" name="fullName" type="text" autocomplete="name" placeholder="Walk-in Customer">
                   <p class="field-error" id="name-error" role="alert"></p>
                 </div>
                 <div class="field">
-                  <label for="phone">Phone Number <span>*</span></label>
-                  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="7121777" required>
+                  <label for="phone">Phone Number <em>Optional</em></label>
+                  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="7121777">
                   <p class="field-error" id="phone-error" role="alert"></p>
                 </div>
                 <div class="field full-width">
-                  <label for="email">Email Address <span>*</span></label>
-                  <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                  <label for="email">Email Address <em>Optional</em></label>
+                  <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
                   <p class="field-error" id="email-error" role="alert"></p>
                 </div>
                 <div class="field full-width rewards-optin">
                   <label class="rewards-optin-label"><input id="join-rewards" type="checkbox"> <span>⭐ Join Pizza Yard Rewards — earn points on this order</span></label>
+                </div>
+                <div class="field full-width">
+                  <label for="birthday">Birthday <em>Optional • Rewards members get a birthday bonus</em></label>
+                  <input id="birthday" type="date" autocomplete="bday">
                 </div>
                 <div class="field full-width">
                   <label for="instructions">Additional Instructions <em>Optional</em></label>
@@ -293,6 +315,7 @@
               <div><span>Extra Toppings</span><strong id="summary-extra-count">0</strong></div>
               <div><span>Extra Topping Cost</span><strong id="summary-extra-cost">$0.00</strong></div>
               <div><span>Quantity</span><strong id="summary-quantity">1</strong></div>
+              <div><span>Drinks & Extras</span><strong id="summary-extras">$0.00</strong></div>
               <div><span>Delivery Fee</span><strong id="summary-delivery">$0.00</strong></div>
             </div>
 

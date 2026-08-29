@@ -568,7 +568,7 @@ create or replace function public.award_rewards_for_completed_order()
 returns trigger language plpgsql security definer set search_path=public as $$
 declare m_id uuid; pts integer;
 begin
-  if new.status='completed' and coalesce(old.status,'') <> 'completed' and new.customer_phone is not null then
+  if new.status='completed' and (TG_OP='INSERT' or coalesce(old.status,'') <> 'completed') and new.customer_phone is not null then
     pts:=floor(greatest(coalesce(new.total,0),0));
     if pts > 0 then
       insert into public.rewards_members(customer_name,customer_phone,customer_email)
@@ -588,3 +588,140 @@ drop trigger if exists pizza_rewards_completed on public.pizza_orders;
 create trigger pizza_rewards_completed after insert or update of status on public.pizza_orders for each row execute function public.award_rewards_for_completed_order();
 drop trigger if exists breakfast_rewards_completed on public.breakfast_orders;
 create trigger breakfast_rewards_completed after insert or update of status on public.breakfast_orders for each row execute function public.award_rewards_for_completed_order();
+
+
+-- ============================================================
+-- Pizza Yard FINAL BUSINESS/GROWTH UPGRADE
+-- Safe additive migration. Run after the existing setup.
+-- ============================================================
+alter table public.pizza_orders add column if not exists customer_birthday date;
+alter table public.pizza_orders add column if not exists extras jsonb not null default '{}'::jsonb;
+alter table public.breakfast_orders add column if not exists customer_birthday date;
+
+create table if not exists public.back_in_stock_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  topping_name text not null,
+  customer_name text,
+  customer_phone text,
+  customer_email text,
+  notified_at timestamptz
+);
+alter table public.back_in_stock_requests enable row level security;
+drop policy if exists "Anyone can request back in stock" on public.back_in_stock_requests;
+create policy "Anyone can request back in stock" on public.back_in_stock_requests for insert to anon,authenticated with check (true);
+drop policy if exists "Staff can manage back in stock requests" on public.back_in_stock_requests;
+create policy "Staff can manage back in stock requests" on public.back_in_stock_requests for all to authenticated
+using (exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())))
+with check (exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+create index if not exists back_in_stock_topping_idx on public.back_in_stock_requests(topping_name,created_at desc);
+
+insert into public.inventory_items(name,category,quantity,unit,weight_tracking)
+values ('Cocoa Tea','Drinks',0,'cups',false),('Local Juice','Drinks',0,'bottles',false)
+on conflict do nothing;
+update public.inventory_items set name='Local Juice' where lower(name)='juice';
+
+alter table public.rewards_members add column if not exists birthday date;
+alter table public.rewards_members add column if not exists birthday_bonus_year integer;
+alter table public.rewards_members add column if not exists completed_orders integer not null default 0;
+alter table public.rewards_members add column if not exists last_completed_at timestamptz;
+alter table public.rewards_members add column if not exists streak_weeks integer not null default 0;
+
+create or replace function public.ensure_rewards_member(p_name text, p_phone text, p_email text default null, p_birthday date default null)
+returns table(points integer) language plpgsql security definer set search_path=public as $$
+declare m_id uuid;
+begin
+  if length(trim(coalesce(p_name,''))) < 1 or length(regexp_replace(coalesce(p_phone,''),'[^0-9]','','g')) <> 7 then raise exception 'Invalid rewards customer details'; end if;
+  insert into public.rewards_members(customer_name,customer_phone,customer_email,birthday)
+  values(trim(p_name),regexp_replace(p_phone,'[^0-9]','','g'),nullif(trim(coalesce(p_email,'')),''),p_birthday)
+  on conflict(customer_phone) do update set customer_name=excluded.customer_name,customer_email=coalesce(excluded.customer_email,rewards_members.customer_email),birthday=coalesce(excluded.birthday,rewards_members.birthday),updated_at=now()
+  returning id into m_id;
+  return query select rm.points from public.rewards_members rm where rm.id=m_id;
+end $$;
+revoke all on function public.ensure_rewards_member(text,text,text,date) from public;
+grant execute on function public.ensure_rewards_member(text,text,text,date) to anon,authenticated;
+
+create or replace function public.award_rewards_for_completed_order()
+returns trigger language plpgsql security definer set search_path=public as $$
+declare
+  m_id uuid; pts integer; birthday date; prior_orders integer; prior_streak integer; prior_last timestamptz; bonus integer:=0; week_gap integer; new_streak integer;
+begin
+  if new.status='completed' and (TG_OP='INSERT' or (TG_OP='UPDATE' and coalesce(old.status,'') <> 'completed')) and new.customer_phone is not null and length(regexp_replace(new.customer_phone,'[^0-9]','','g'))=7 then
+    pts:=floor(greatest(coalesce(new.total,0),0));
+    insert into public.rewards_members(customer_name,customer_phone,customer_email,birthday)
+    values(coalesce(nullif(trim(new.customer_name),''),'Customer'),regexp_replace(new.customer_phone,'[^0-9]','','g'),new.customer_email,new.customer_birthday)
+    on conflict(customer_phone) do update set customer_name=excluded.customer_name,customer_email=coalesce(excluded.customer_email,rewards_members.customer_email),birthday=coalesce(excluded.birthday,rewards_members.birthday),updated_at=now()
+    returning id,completed_orders,streak_weeks,last_completed_at,birthday into m_id,prior_orders,prior_streak,prior_last,birthday;
+    if extract(month from coalesce(new.customer_birthday,birthday))=extract(month from now()) and extract(day from coalesce(new.customer_birthday,birthday))=extract(day from now()) then
+      if (select coalesce(birthday_bonus_year,0) from public.rewards_members where id=m_id) <> extract(year from now()) then
+        bonus:=bonus+50; update public.rewards_members set birthday_bonus_year=extract(year from now()) where id=m_id;
+        insert into public.rewards_ledger(member_id,points,source_type,source_id,note) values(m_id,50,'adjustment',gen_random_uuid(),'Birthday bonus');
+      end if;
+    end if;
+    if (coalesce(prior_orders,0)+1) % 5 = 0 then
+      bonus:=bonus+25;
+      insert into public.rewards_ledger(member_id,points,source_type,source_id,note) values(m_id,25,'adjustment',gen_random_uuid(),'5-order milestone');
+    end if;
+    if prior_last is not null then
+      week_gap:=floor(extract(epoch from (now()-prior_last))/604800);
+      if week_gap<=1 then new_streak:=coalesce(prior_streak,0)+1; else new_streak:=1; end if;
+    else new_streak:=1; end if;
+    if new_streak>=2 then
+      bonus:=bonus+10;
+      insert into public.rewards_ledger(member_id,points,source_type,source_id,note) values(m_id,10,'adjustment',gen_random_uuid(),'Weekly rewards streak');
+    end if;
+    insert into public.rewards_ledger(member_id,points,source_type,source_id,note)
+    values(m_id,pts,case when TG_TABLE_NAME='pizza_orders' then 'pizza_order' else 'breakfast_order' end,new.id,'Completed order')
+    on conflict(source_type,source_id) do nothing;
+    if found then update public.rewards_members set points=points+pts+bonus,completed_orders=coalesce(completed_orders,0)+1,last_completed_at=now(),streak_weeks=new_streak,updated_at=now() where id=m_id; end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists pizza_rewards_completed on public.pizza_orders;
+create trigger pizza_rewards_completed after insert or update of status on public.pizza_orders for each row execute function public.award_rewards_for_completed_order();
+drop trigger if exists breakfast_rewards_completed on public.breakfast_orders;
+create trigger breakfast_rewards_completed after insert or update of status on public.breakfast_orders for each row execute function public.award_rewards_for_completed_order();
+
+drop function if exists public.get_rewards_summary(text,text);
+create or replace function public.get_rewards_summary(p_name text, p_phone text)
+returns table(customer_name text, points integer, next_reward_points integer, next_reward_label text, available_reward text, completed_orders integer, streak_weeks integer, birthday date)
+language sql security definer set search_path=public as $$
+  with m as (select * from public.rewards_members where lower(trim(customer_name))=lower(trim(p_name)) and customer_phone=regexp_replace(p_phone,'[^0-9]','','g') limit 1)
+  select m.customer_name,m.points,
+    case when m.points<100 then 100 when m.points<200 then 200 when m.points<300 then 300 else 0 end,
+    case when m.points<100 then '$5 OFF' when m.points<200 then '$10 OFF' when m.points<300 then 'FREE 12" PIZZA' else 'All current rewards unlocked' end,
+    case when m.points>=300 then 'FREE 12" PIZZA' when m.points>=200 then '$10 OFF' when m.points>=100 then '$5 OFF' else 'Keep earning points' end,
+    coalesce(m.completed_orders,0),coalesce(m.streak_weeks,0),m.birthday
+  from m;
+$$;
+revoke all on function public.get_rewards_summary(text,text) from public;
+grant execute on function public.get_rewards_summary(text,text) to anon,authenticated;
+
+create or replace view public.pizza_yard_monthly_sales as
+select date_trunc('month',created_at)::date as month,coalesce(sum(total),0)::numeric(12,2) as revenue,count(*)::bigint as completed_orders,
+       'pizza'::text as category from public.pizza_orders where status='completed' group by 1
+union all
+select date_trunc('month',created_at)::date as month,coalesce(sum(total),0)::numeric(12,2) as revenue,count(*)::bigint as completed_orders,
+       'breakfast'::text as category from public.breakfast_orders where status='completed' group by 1;
+
+
+-- Configurable drink menu prices / availability.
+create table if not exists public.menu_items (
+  id text primary key,
+  name text not null,
+  category text not null,
+  price numeric(10,2) not null default 0 check(price>=0),
+  available boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+insert into public.menu_items(id,name,category,price,available) values
+('cocoa_tea','Cocoa Tea','Drinks',3,true),('local_juice','Local Juice','Drinks',6,true)
+on conflict(id) do update set name=excluded.name,category=excluded.category;
+alter table public.menu_items enable row level security;
+drop policy if exists "Anyone can view menu items" on public.menu_items;
+create policy "Anyone can view menu items" on public.menu_items for select to anon,authenticated using(true);
+drop policy if exists "Staff can manage menu items" on public.menu_items;
+create policy "Staff can manage menu items" on public.menu_items for all to authenticated
+using(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())))
+with check(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));

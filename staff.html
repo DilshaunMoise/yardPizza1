@@ -24,7 +24,7 @@
 <div id="customer-suggestions" class="customer-suggestions hidden"></div><div id="recent-customer-actions" class="recent-customer-actions"><button type="button" class="quick-repeat hidden" id="repeat-last">🔁 REPEAT LAST ORDER</button></div>
 </div>
 <div class="grid2"><label>Customer name <span class="muted">(optional)</span><input id="customer-name" autocomplete="name" placeholder="Full name"></label><label>Phone <span class="muted">(optional)</span><input id="customer-phone" inputmode="numeric" autocomplete="tel" placeholder="7121777"></label></div>
-<label>Email <span class="muted">(optional)</span><input id="customer-email" type="email" placeholder="customer@email.com"></label>
+<label>Email <span class="muted">(optional)</span><input id="customer-email" type="email" placeholder="customer@email.com"></label><label>Birthday <span class="muted">(optional)</span><input id="customer-birthday" type="date"></label>
 <div class="divider"></div>
 <div id="pizza-staff-section">
 <div class="section-head"><div><span class="eyebrow">PIZZA</span><h2>Build the 12&quot; pizza</h2></div><span class="badge">12&quot; ONLY</span></div>
@@ -36,11 +36,12 @@
 <div class="section-head"><div><span class="eyebrow">FULFILLMENT</span><h2>Pickup or delivery?</h2></div></div>
 <div class="mode-toggle"><button type="button" class="mode active" data-type="pickup">🏪 Pickup</button><button type="button" class="mode" data-type="delivery">🛵 Delivery</button></div>
 <div id="delivery-fields" class="hidden"><label>Delivery address<textarea id="address" rows="3" placeholder="Customer's delivery address"></textarea></label><p id="delivery-error" class="error"></p></div>
+<div class="staff-drinks"><div class="eyebrow">DRINKS</div><div class="staff-drink-grid"><label>☕ Cocoa Tea <span>$3</span><input id="drink-cocoa" type="number" min="0" value="0"></label><label>🥤 Local Juice <span>$6</span><input id="drink-juice" type="number" min="0" value="0"></label></div></div>
 <div class="quick-notes"><div class="eyebrow">QUICK NOTES</div><div id="quick-note-buttons" class="quick-note-buttons"><button type="button" data-note="Extra crispy">🔥 Extra crispy</button><button type="button" data-note="Extra sauce">🥫 Extra sauce</button><button type="button" data-note="Light cheese">🧀 Light cheese</button><button type="button" data-note="No cheese">🚫 No cheese</button></div></div><label>Special instructions <span class="muted">(optional)</span><textarea id="instructions" rows="3" placeholder="Extra notes for the kitchen"></textarea></label>
 <div class="cart-box"><div class="section-head"><div><span class="eyebrow">ORDER CART</span><h2>Different pizzas</h2></div><span id="cart-count" class="badge">1 ITEM</span></div><div id="cart-list" class="cart-list"></div><button type="button" class="ghost wide" id="add-pizza">＋ ADD ANOTHER DIFFERENT PIZZA</button></div>
 </div>
 <div id="breakfast-staff-section" class="hidden">
-<div class="section-head"><div><span class="eyebrow">BREAKFAST</span><h2>Build the breakfast order</h2></div><span class="badge">NO DRINKS</span></div>
+<div class="section-head"><div><span class="eyebrow">BREAKFAST</span><h2>Build the breakfast order</h2></div><span class="badge">BREAKFAST + DRINKS</span></div>
 <div id="breakfast-menu" class="breakfast-menu"></div>
 </div>
 <div class="payment-row"><button type="button" class="payment active" data-payment="unpaid">💵 UNPAID</button><button type="button" class="payment" data-payment="paid">✅ PAID</button><select id="payment-method"><option value="">Payment method</option><option>Cash</option><option>Card</option><option>Other</option></select></div><button class="primary send" id="send-order" type="submit">SEND ORDER TO DASHBOARD →</button><p id="submit-error" class="error"></p>

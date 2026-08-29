@@ -86,7 +86,7 @@ const MENU=[
  {id:'local_bread',name:'Local Bread',price:3},
  {id:'coco_tea',name:'Cocoa Tea',price:3},
  {id:'coffee',name:'Coffee',price:3},
- {id:'juice',name:'Juice',price:6}
+ {id:'juice',name:'Local Juice',price:6}
 ];
 const qty=Object.fromEntries(MENU.map(x=>[x.id,0]));
 const opts={bakes:'Cheese'};
@@ -171,10 +171,11 @@ async function submitBreakfastOrder(name,phone,notes,selected,total){
     items:selected,
     total,
     special_instructions:notes||null,
+    customer_birthday:birthday||null,
     status:'new'
   }).select('id').single();
   if(error)throw error;
-  if(document.querySelector('#join-rewards')?.checked){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
+  if(document.querySelector('#join-rewards')?.checked){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null,p_birthday:birthday||null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
   return data;
 }
 
@@ -185,6 +186,7 @@ document.querySelector('#breakfast-form')?.addEventListener('submit',async e=>{
   const name=document.querySelector('#customer-name')?.value.trim()||'';
   const phone=document.querySelector('#customer-phone')?.value.trim()||'';
   const notes=document.querySelector('#notes')?.value.trim()||'';
+  const birthday=document.querySelector('#birthday')?.value||'';
   const selected=selectedItems();
 
   if(!name||!phone){if(error)error.textContent='Name and phone number are required.';return;}

@@ -43,3 +43,5 @@ body.store-mode .summary .total{font-size:24px}
 body.store-mode .breakfast-item{min-height:78px;padding:16px}
 body.store-mode .breakfast-item strong{font-size:17px}
 @media(max-width:900px){body.store-mode .staff-layout{grid-template-columns:1fr}body.store-mode .summary{position:static;max-height:none}body.store-mode .topping-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.staff-drinks{margin:15px 0;padding:15px;background:#faf8f4;border:1px solid #e7e0d5;border-radius:14px}.staff-drink-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}.staff-drink-grid label{display:flex;align-items:center;gap:8px}.staff-drink-grid label span{margin-left:auto}.staff-drink-grid input{width:80px;padding:9px;border:1px solid #ddd;border-radius:8px}@media(max-width:600px){.staff-drink-grid{grid-template-columns:1fr}}

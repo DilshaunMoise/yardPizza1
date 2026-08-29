@@ -96,7 +96,10 @@ const state = {
   leftToppings: [],
   rightToppings: [],
   toppingAvailability: {},
-  cart: []
+  cart: [],
+  extras: { cocoa_tea: 0, local_juice: 0 },
+  birthday: "",
+  drinkPrices: { cocoa_tea: 3, local_juice: 6 }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -130,6 +133,8 @@ const elements = {
   summaryExtraCost: $("#summary-extra-cost"),
   summaryQuantity: $("#summary-quantity"),
   summaryDelivery: $("#summary-delivery"),
+  summaryExtras: $("#summary-extras"),
+  birthday: $("#birthday"),
   summaryTotal: $("#summary-total"),
   deliverySummary: $("#delivery-summary"),
   successModal: $("#success-modal"),
@@ -201,8 +206,11 @@ function calculateOrder() {
   const extraToppings = pizzas.reduce((sum, p) => sum + Number(p.extraToppings || 0) * Number(p.quantity || 1), 0);
   const extraToppingCost = pizzas.reduce((sum, p) => sum + Number(p.extraToppingCost || 0) * Number(p.quantity || 1), 0);
   const boxes = pizzas.reduce((sum, p) => sum + Number(p.quantity || 1), 0);
+  const extras = { cocoa_tea: Number(state.extras?.cocoa_tea || 0), local_juice: Number(state.extras?.local_juice || 0) };
+  const extraPrices = state.drinkPrices || { cocoa_tea: 3, local_juice: 6 };
+  const extrasTotal = extras.cocoa_tea * extraPrices.cocoa_tea + extras.local_juice * extraPrices.local_juice;
   const deliveryFee = state.orderType === "delivery" && boxes >= CONFIG.delivery.minimumBoxes ? CONFIG.delivery.fee : 0;
-  return { toppingCount: totalToppingCount, unitPrice: current.unitPrice, includedToppings, extraToppings, extraToppingCost, pizzasSubtotal, deliveryFee, total: pizzasSubtotal + deliveryFee, boxes, pizzas };
+  return { toppingCount: totalToppingCount, unitPrice: current.unitPrice, includedToppings, extraToppings, extraToppingCost, pizzasSubtotal, extras, extrasTotal, deliveryFee, total: pizzasSubtotal + extrasTotal + deliveryFee, boxes, pizzas };
 }
 
 function toppingButton(topping, selected, clickHandler) {
@@ -210,12 +218,13 @@ function toppingButton(topping, selected, clickHandler) {
   button.type = "button";
   button.className = "topping-option";
   const available = state.toppingAvailability[topping] !== false;
-  button.disabled = !available;
+  button.disabled = false;
   button.classList.toggle("sold-out", !available);
   button.setAttribute("aria-pressed", String(selected));
-  button.innerHTML = `<span class="topping-visual" aria-hidden="true">${TOPPING_ICONS[topping] || "🍕"}</span><span>${escapeHtml(topping)}</span>${available ? "" : "<small>SOLD OUT</small>"}<span class="topping-check" aria-hidden="true">✓</span>`;
+  button.innerHTML = `<span class="topping-visual" aria-hidden="true">${TOPPING_ICONS[topping] || "🍕"}</span><span>${escapeHtml(topping)}</span>${available ? "" : "<small>SOLD OUT • NOTIFY ME</small>"}<span class="topping-check" aria-hidden="true">✓</span>`;
   if (selected) button.classList.add("selected");
   if (available) button.addEventListener("click", clickHandler);
+  else button.addEventListener("click",()=>requestBackInStock(topping));
   return button;
 }
 
@@ -334,6 +343,7 @@ function updateUI() {
   elements.summaryExtraCost.textContent = money(order.extraToppingCost);
   elements.summaryQuantity.textContent = order.boxes;
   elements.summaryDelivery.textContent = money(order.deliveryFee);
+  if (elements.summaryExtras) elements.summaryExtras.textContent = money(order.extrasTotal);
   elements.summaryTotal.textContent = money(order.total);
   elements.deliverySummary.textContent = state.orderType === "delivery" ? (order.boxes >= CONFIG.delivery.minimumBoxes ? `Delivery fee: ${money(order.deliveryFee)}.` : `Delivery requires ${CONFIG.delivery.minimumBoxes} boxes. You currently have ${order.boxes}.`) : "Pickup selected — no delivery fee.";
   renderPizzaCart();
@@ -386,19 +396,13 @@ function validateForm() {
   clearErrors();
   let valid = true;
 
-  const fullName = elements.name.value.trim();
-  if (!fullName) {
-    $("#name-error").textContent = "Please enter your full name.";
+  if (elements.phone.value.trim() && !isValidPhone(elements.phone.value)) {
+    $("#phone-error").textContent = "Enter a valid 7-digit Saint Lucia phone number, or leave it blank.";
     valid = false;
   }
 
-  if (!isValidPhone(elements.phone.value)) {
-    $("#phone-error").textContent = "Enter a valid Saint Lucia phone number, e.g. 7121777.";
-    valid = false;
-  }
-
-  if (!isValidEmail(elements.email.value)) {
-    $("#email-error").textContent = "Please enter a valid email address.";
+  if (elements.email.value.trim() && !isValidEmail(elements.email.value)) {
+    $("#email-error").textContent = "Enter a valid email address, or leave it blank.";
     valid = false;
   }
 
@@ -424,7 +428,7 @@ function validateForm() {
 
 function buildOrderDetails() {
   const order = calculateOrder();
-  const customerName = elements.name.value.trim();
+  const customerName = elements.name.value.trim() || "Walk-in Customer";
   const customerPhone = normalizeSaintLuciaPhone(elements.phone.value);
   const customerEmail = elements.email.value.trim();
   const address = elements.address.value.trim();
@@ -437,6 +441,7 @@ function buildOrderDetails() {
     orderType: state.orderType,
     address,
     instructions,
+    birthday: elements.birthday?.value || "",
     ...order,
     pizzas: order.pizzas
   };
@@ -444,10 +449,11 @@ function buildOrderDetails() {
 
 function buildEmailBody(details) {
   const pizzaLines = details.pizzas.map((pizza, i) => `Pizza ${i + 1} (${pizza.quantity} box${pizza.quantity === 1 ? "" : "es"}): ${pizza.mode === "half" ? `Left: ${pizza.left.join(", ") || "Cheese"} | Right: ${pizza.right.join(", ") || "Cheese"}` : (pizza.toppings.join(", ") || "Cheese Pizza")} — ${money(pizza.unitPrice * pizza.quantity)}`).join("\n");
+  const extrasLine = `Drinks: Cocoa Tea ×${Number(details.extras?.cocoa_tea||0)} • Local Juice ×${Number(details.extras?.local_juice||0)} — ${money(details.extrasTotal||0)}`;
   return [
     "NEW PIZZA ORDER 🍕", "", "BUSINESS", `Business: ${CONFIG.businessName}`, `Location: ${CONFIG.location}`, "",
     "CUSTOMER", `Name: ${details.customerName}`, `Phone: ${details.customerPhone}`, `Email: ${details.customerEmail}`, "",
-    "ORDER", `Total pizzas/boxes: ${details.boxes}`, pizzaLines, `Order type: ${state.orderType === "delivery" ? "Delivery" : "Pickup"}`, `Delivery fee: ${money(details.deliveryFee)}`, ...(state.orderType === "delivery" ? [`Delivery address: ${details.address}`] : []), `Special instructions: ${details.instructions || "None"}`, "", `TOTAL: ${money(details.total)}`
+    "ORDER", `Total pizzas/boxes: ${details.boxes}`, pizzaLines, `Order type: ${state.orderType === "delivery" ? "Delivery" : "Pickup"}`, extrasLine, `Delivery fee: ${money(details.deliveryFee)}`, ...(state.orderType === "delivery" ? [`Delivery address: ${details.address}`] : []), `Special instructions: ${details.instructions || "None"}`, "", `TOTAL: ${money(details.total)}`
   ].join("\n");
 }
 
@@ -474,7 +480,7 @@ async function saveOrderToSupabase(details) {
     unit_price: details.pizzasSubtotal / Math.max(1, details.boxes), included_toppings: details.includedToppings,
     extra_toppings: details.extraToppings, extra_topping_cost: details.extraToppingCost, quantity: details.boxes,
     delivery_fee: details.deliveryFee, special_instructions: details.instructions || null, total: details.total, status: "new", tracking_token: state.trackingToken,
-    order_details: JSON.stringify(details.pizzas)
+    order_details: JSON.stringify({pizzas: details.pizzas, extras: details.extras, birthday: details.birthday || null}), extras: details.extras || {}
   };
   const { error } = await window.pizzaYardSupabase.from("pizza_orders").insert(payload);
   if (error) { console.error("Supabase order save failed:", error); throw new Error("We couldn't receive your order right now. Please try again."); }
@@ -490,7 +496,7 @@ async function sendFormspreeBackup(details) {
   formData.append("order_type", details.orderType); formData.append("delivery_address", details.address || "N/A"); formData.append("pizza_size", CONFIG.pizza.size);
   formData.append("toppings", details.pizzas.map((p,i)=>pizzaLabel(p,i)).join("\n")); formData.append("number_of_toppings", String(details.toppingCount));
   formData.append("quantity", String(details.boxes)); formData.append("delivery_fee", money(details.deliveryFee)); formData.append("special_instructions", details.instructions || "None");
-  formData.append("total", money(details.total)); formData.append("order_details", body);
+  formData.append("total", money(details.total)); formData.append("drinks", `Cocoa Tea ×${Number(details.extras?.cocoa_tea||0)}; Local Juice ×${Number(details.extras?.local_juice||0)}`); formData.append("order_details", body);
   const response = await fetch(CONFIG.formspreeEndpoint, { method: "POST", body: formData, headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error("Formspree backup failed."); return true;
 }
@@ -697,6 +703,8 @@ function resetOrder() {
   state.quantity = 1;
   state.orderType = "pickup";
   state.cart = [];
+  state.extras = { cocoa_tea: 0, local_juice: 0 };
+  state.birthday = "";
   elements.form.reset();
   elements.orderTypeInputs[0].checked = true;
   elements.address.required = false;
@@ -737,6 +745,24 @@ async function handleSubmit(event) {
   } finally {
     setSubmitting(false);
   }
+}
+
+async function loadDrinkMenu(){
+  if(!window.pizzaYardSupabase)return;
+  try{const {data,error}=await window.pizzaYardSupabase.from('menu_items').select('id,price,available').eq('category','Drinks');if(error||!data)return;data.forEach(x=>{if(x.id in state.drinkPrices){state.drinkPrices[x.id]=Number(x.price||0);if(x.available===false)state.drinkPrices[x.id]=0;}});document.querySelectorAll('[data-extra-price]').forEach(e=>{const k=e.dataset.extraPrice;e.textContent=money(state.drinkPrices[k]||0)});updateUI();}catch(e){console.warn('Drink menu could not be loaded:',e)}}
+
+async function requestBackInStock(topping){
+  const email=prompt(`Notify me when ${topping} is back in stock. Enter your email (or Cancel):`);
+  if(email===null)return;
+  const clean=String(email).trim();
+  if(clean&&!isValidEmail(clean)){alert('Please enter a valid email address.');return;}
+  const phone=prompt('Optional: enter your 7-digit Saint Lucia phone number, or leave blank.');
+  if(phone&& !isValidPhone(phone)){alert('Please enter a valid 7-digit phone number.');return;}
+  if(window.pizzaYardSupabase){
+    const {error}=await window.pizzaYardSupabase.from('back_in_stock_requests').insert({topping_name:topping,customer_name:elements.name?.value.trim()||null,customer_phone:phone?normalizeSaintLuciaPhone(phone):null,customer_email:clean||null});
+    if(error){console.warn('Back-in-stock request failed:',error);showGrowthMessage('We could not save that request right now.');return;}
+  }
+  showGrowthMessage(`We'll keep your request for ${topping}. 🔔`);
 }
 
 async function loadToppingAvailability() {
@@ -788,7 +814,11 @@ function init() {
     updateUI();
   }));
   loadToppingAvailability();
+  loadDrinkMenu();
   loadPublicReviews();
+  $$('[data-extra-plus]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.extraPlus;state.extras[k]=(state.extras[k]||0)+1;renderExtras();updateUI();}));
+  $$('[data-extra-minus]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.extraMinus;state.extras[k]=Math.max(0,(state.extras[k]||0)-1);renderExtras();updateUI();}));
+  renderExtras();
   $("#review-form")?.addEventListener("submit",submitReview);$("#post-order-review")?.addEventListener("click",()=>{document.querySelector("#reviews")?.scrollIntoView({behavior:"smooth"});document.querySelector("#review-comment")?.focus()});
 
   elements.addAnotherPizza?.addEventListener("click", addCurrentPizza);
@@ -826,7 +856,7 @@ async function ensureRewardsMemberFromOrder() {
   if (!join?.checked || !window.pizzaYardSupabase) return;
   try {
     await window.pizzaYardSupabase.rpc('ensure_rewards_member', {
-      p_name: elements.name.value.trim(), p_phone: normalizeSaintLuciaPhone(elements.phone.value), p_email: elements.email.value.trim()
+      p_name: elements.name.value.trim() || 'Walk-in Customer', p_phone: normalizeSaintLuciaPhone(elements.phone.value), p_email: elements.email.value.trim(), p_birthday: elements.birthday?.value || null
     });
   } catch (error) { console.warn('Rewards signup could not be saved:', error); }
 }
@@ -841,7 +871,7 @@ async function checkRewards(e) {
   const { data, error } = await window.pizzaYardSupabase.rpc('get_rewards_summary', { p_name:name, p_phone:phone });
   if (error || !data?.length) { msg.textContent = 'We could not find a rewards account yet. Join Rewards when placing your next order, then check again after it is completed.'; return; }
   const r=data[0], points=Number(r.points||0), next=Number(r.next_reward_points||0), pct=next?Math.min(100,Math.round((points/next)*100)):100;
-  result.innerHTML = `<div class="rewards-points">${points} points</div><strong>${escapeHtml(r.available_reward||'Keep earning points')}</strong>${next?`<div class="rewards-progress"><span style="width:${pct}%"></span></div><p>${Math.max(0,next-points)} more points to ${escapeHtml(r.next_reward_label)}</p>`:'<p>🎉 You have reached every current reward level.</p>'}<div class="rewards-actions"><button type="button" data-reward="five_off" ${points<100?'disabled':''}>Redeem $5 OFF</button><button type="button" data-reward="ten_off" ${points<200?'disabled':''}>Redeem $10 OFF</button><button type="button" data-reward="free_pizza" ${points<300?'disabled':''}>Redeem Free Pizza</button></div><small class="muted">Redeemed rewards give you a one-time code to show Pizza Yard staff.</small>`;
+  result.innerHTML = `<div class="rewards-points">${points} points</div><strong>${escapeHtml(r.available_reward||'Keep earning points')}</strong>${next?`<div class="rewards-progress"><span style="width:${pct}%"></span></div><p>${Math.max(0,next-points)} more points to ${escapeHtml(r.next_reward_label)}</p>`:'<p>🎉 You have reached every current reward level.</p>'}<div class="rewards-actions"><button type="button" data-reward="five_off" ${points<100?'disabled':''}>Redeem $5 OFF</button><button type="button" data-reward="ten_off" ${points<200?'disabled':''}>Redeem $10 OFF</button><button type="button" data-reward="free_pizza" ${points<300?'disabled':''}>Redeem Free Pizza</button></div><small class="muted">${Number(r.completed_orders||0)} completed orders • ${Number(r.streak_weeks||0)}-week streak. Birthday bonus: 50 points on your birthday.</small><small class="muted">Redeemed rewards give you a one-time code to show Pizza Yard staff.</small>`;
   result.classList.remove('hidden');
   result.querySelectorAll('[data-reward]').forEach(btn=>btn.addEventListener('click',()=>redeemReward(name,phone,btn.dataset.reward,btn,result)));
 }
@@ -860,3 +890,34 @@ openSuccessModal = function(total){ ensureRewardsMemberFromOrder(); return origi
 document.addEventListener('DOMContentLoaded',()=>{
   $('#rewards-form')?.addEventListener('submit',checkRewards);
 });
+
+
+// ============================================================
+// Pizza Yard Customer Growth Features — favorites, reorder,
+// combos, specials, secret menu, mystery rewards and back-in-stock.
+// These are additive and use the existing ordering flow.
+// ============================================================
+function renderExtras(){
+  Object.keys(state.extras||{}).forEach(k=>{const n=document.querySelector(`#extra-${k}`);if(n)n.textContent=state.extras[k]||0;});
+}
+const PY_GROWTH_KEY='pizzaYardFavoritesV1';
+const PY_LAST_ORDER_KEY='pizzaYardLastOrderV1';
+const PY_COMBOS=[
+  {id:'family',name:'Family Yard Combo',tag:'BEST VALUE',desc:'Two classic two-topping 12" pizzas + 2 Local Juices.',pizzas:[{mode:'whole',toppings:['Pepperoni','Mushroom'],quantity:1},{mode:'whole',toppings:['Ham','Bell Peppers'],quantity:1}],extras:{local_juice:2}},
+  {id:'lunch',name:'Yard Lunch Combo',tag:'POPULAR',desc:'One two-topping pizza + Cocoa Tea.',pizzas:[{mode:'whole',toppings:['Pepperoni','Corn'],quantity:1}],extras:{cocoa_tea:1}},
+  {id:'veg',name:'Veggie Yard Combo',tag:'FRESH',desc:'Two-topping Veg pizza + Local Juice.',pizzas:[{mode:'whole',toppings:['Veg','Bell Peppers'],quantity:1}],extras:{local_juice:1}}
+];
+function getSavedFavorites(){try{return JSON.parse(localStorage.getItem(PY_GROWTH_KEY)||'[]')}catch{return[]}}
+function saveFavorite(pizza){const list=getSavedFavorites();const key=JSON.stringify(pizza);if(!list.some(x=>JSON.stringify(x)===key)){list.unshift(pizza);localStorage.setItem(PY_GROWTH_KEY,JSON.stringify(list.slice(0,8)));}renderGrowthHub();}
+function favoriteCurrent(){saveFavorite(currentPizzaSnapshot());showGrowthMessage('Saved to your favorites ⭐');}
+function showGrowthMessage(text){let e=document.querySelector('#growth-message');if(!e){e=document.createElement('div');e.id='growth-message';e.className='growth-message';document.querySelector('#growth-cards')?.before(e);}e.textContent=text;clearTimeout(window.__pyGrowthMsg);window.__pyGrowthMsg=setTimeout(()=>e.remove(),2800)}
+function applyPizzaPreset(pizzas,extras={}){resetOrder();const first=pizzas[0];state.pizzaMode=first.mode==='half'?'half':'whole';state.selectedToppings=[...(first.toppings||[])];state.leftToppings=[...(first.left||[])];state.rightToppings=[...(first.right||[])];state.quantity=Number(first.quantity||1);state.extras={cocoa_tea:Number(extras.cocoa_tea||0),local_juice:Number(extras.local_juice||0)};for(let i=1;i<pizzas.length;i++){state.cart.push({...pizzas[i],unitPrice:calculatePizzaUnitPrice(new Set([...(pizzas[i].toppings||[]),...(pizzas[i].left||[]),...(pizzas[i].right||[])]).size),toppingCount:new Set([...(pizzas[i].toppings||[]),...(pizzas[i].left||[]),...(pizzas[i].right||[])]).size,includedToppings:Math.min(2,new Set([...(pizzas[i].toppings||[]),...(pizzas[i].left||[]),...(pizzas[i].right||[])]).size),extraToppings:Math.max(0,new Set([...(pizzas[i].toppings||[]),...(pizzas[i].left||[]),...(pizzas[i].right||[])]).size-2),extraToppingCost:Math.max(0,new Set([...(pizzas[i].toppings||[]),...(pizzas[i].left||[]),...(pizzas[i].right||[])]).size-2)*3});}renderToppings();renderExtras();updateDeliveryUI();updateUI();document.querySelector('#builder')?.scrollIntoView({behavior:'smooth'});}
+function comboCard(c){return `<article class="growth-card"><span class="growth-tag">${escapeHtml(c.tag)}</span><div class="growth-icon">🍕</div><h3>${escapeHtml(c.name)}</h3><p>${escapeHtml(c.desc)}</p><button type="button" class="btn btn-primary growth-action" data-combo="${c.id}">ORDER COMBO →</button></article>`}
+function renderGrowthHub(){const wrap=document.querySelector('#growth-cards');if(!wrap)return;const fav=getSavedFavorites();wrap.innerHTML=`<article class="growth-card featured-growth"><span class="growth-tag">🔥 CUSTOMER FAVORITE</span><div class="growth-icon">🍕</div><h3>Two-Topping Classic</h3><p>Pepperoni + Mushroom — our easy crowd-pleaser.</p><button type="button" class="btn btn-primary" data-growth-preset="classic">ORDER FAVORITE →</button></article>${PY_COMBOS.map(comboCard).join('')}<article class="growth-card"><span class="growth-tag">📅 DAILY SPECIAL</span><div class="growth-icon">⭐</div><h3>Yard Daily Special</h3><p>Ask the team what today's special is — specials can change without notice.</p><button type="button" class="btn btn-secondary" data-daily>ASK TODAY'S SPECIAL</button></article><article class="growth-card"><span class="growth-tag">🎁 MYSTERY REWARD</span><div class="growth-icon">🎁</div><h3>Mystery Reward</h3><p>Rewards members can watch for surprise bonuses tied to milestones.</p><button type="button" class="btn btn-secondary" data-mystery>REVEAL INFO</button></article><article class="growth-card"><span class="growth-tag">🎁 SECRET MENU</span><div class="growth-icon">🤫</div><h3>Mystery Yard Box</h3><p>Ask staff for today's off-menu surprise. Mystery rewards are announced at the counter.</p><button type="button" class="btn btn-secondary" data-mystery>SHOW SECRET</button></article>`;wrap.querySelectorAll('[data-growth-preset]').forEach(b=>b.addEventListener('click',()=>applyPizzaPreset([{mode:'whole',toppings:['Pepperoni','Mushroom'],quantity:1}])));wrap.querySelectorAll('[data-combo]').forEach(b=>b.addEventListener('click',()=>{const c=PY_COMBOS.find(x=>x.id===b.dataset.combo);if(c)applyPizzaPreset(c.pizzas,c.extras)}));wrap.querySelectorAll('[data-mystery]').forEach(b=>b.addEventListener('click',()=>showGrowthMessage('🎁 Mystery rewards are surprise bonuses for active Rewards members. Ask staff if a mystery reward is available today.')));wrap.querySelector('[data-daily]')?.addEventListener('click',()=>showGrowthMessage('⭐ Today’s special changes daily — ask Pizza Yard staff for the current special.'));
+const saved=document.querySelector('#saved-orders');if(saved){saved.innerHTML=fav.length?`<div class="saved-heading"><div><span class="eyebrow">YOUR SAVED PICKS</span><h3>Favorites & Order Again</h3></div><button type="button" class="text-button" data-clear-favs>Clear</button></div><div class="saved-grid">${fav.map((p,i)=>`<button type="button" class="saved-pick" data-fav="${i}"><strong>⭐ Favorite ${i+1}</strong><span>${escapeHtml(pizzaLabel(p,i))}</span></button>`).join('')}</div>`:'';saved.querySelectorAll('[data-fav]').forEach(b=>b.addEventListener('click',()=>{const x=fav[Number(b.dataset.fav)];applyPizzaPreset([x])}));saved.querySelector('[data-clear-favs]')?.addEventListener('click',()=>{localStorage.removeItem(PY_GROWTH_KEY);renderGrowthHub()});}}
+function saveLastOrderForGrowth(){try{const details=buildOrderDetails();localStorage.setItem(PY_LAST_ORDER_KEY,JSON.stringify(details));}catch{}}
+const pyOriginalSubmitOrder=submitOrder; submitOrder=async function(details){const result=await pyOriginalSubmitOrder(details);try{localStorage.setItem(PY_LAST_ORDER_KEY,JSON.stringify(details));if(details.pizzas?.[0])saveFavorite(details.pizzas[0]);}catch{}return result;};
+function setupGrowth(){renderGrowthHub();const last=(()=>{try{return JSON.parse(localStorage.getItem(PY_LAST_ORDER_KEY)||'null')}catch{return null}})();if(last?.pizzas?.length){const saved=document.querySelector('#saved-orders');if(saved&&!saved.innerHTML) saved.innerHTML=`<div class="saved-heading"><div><span class="eyebrow">ORDER AGAIN</span><h3>Your last order is ready</h3></div></div><button type="button" class="saved-pick last-order" id="order-again"><strong>🔄 ORDER AGAIN</strong><span>${escapeHtml(last.pizzas.map((p,i)=>pizzaLabel(p,i)).join(' • '))}</span></button>`;document.querySelector('#order-again')?.addEventListener('click',()=>applyPizzaPreset(last.pizzas,last.extras||{}));}
+const form=document.querySelector('#order-form');if(form&&!document.querySelector('#save-favorite-btn')){const b=document.createElement('button');b.type='button';b.id='save-favorite-btn';b.className='btn btn-secondary';b.textContent='⭐ Save This Pizza';b.addEventListener('click',favoriteCurrent);elements.placeOrder?.before(b);}
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupGrowth);else setupGrowth();

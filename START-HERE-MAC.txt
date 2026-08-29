@@ -1,0 +1,34 @@
+PIZZA YARD FINAL COMPLETE — START HERE
+
+1. UNZIP
+Unzip this ZIP into Downloads. Keep the entire folder together.
+
+2. SUPABASE DATABASE
+Open Supabase > SQL Editor > New query.
+Open supabase-setup.sql from this folder, press Cmd+A, Cmd+C, paste into the SQL Editor, then Run.
+This SQL is additive and uses IF NOT EXISTS / safe policy replacement. It includes the order_details fix, breakfast, inventory, rewards, reviews, drinks, back-in-stock requests, and business-sales support.
+
+3. EDGE FUNCTION — RECOMMENDED DASHBOARD METHOD
+Open Supabase > Edge Functions > pizza-yard-staff-api.
+Edit the function and deploy the included file:
+supabase/functions/pizza-yard-staff-api/index.ts
+
+If you prefer Terminal, use the exact command in EDGE-FUNCTION-DEPLOY-COMMANDS.txt. It uses --use-api and --debug so Docker is not required and deployment errors are visible.
+
+4. STAFF USER
+In SQL Editor run:
+select au.id, au.email, su.user_id
+from auth.users au
+left join public.staff_users su on su.user_id = au.id
+where au.email = 'yardpizza758@gmail.com';
+The auth.users.id and staff_users.user_id must match.
+
+5. WEBSITE
+Upload ALL files in this folder to your website host. Do not upload only index.html.
+
+6. TEST ORDER FLOW
+Customer site -> place pizza -> dashboard -> status changes -> completed -> Business Earnings.
+Also test breakfast, drinks, inventory, rewards, reviews, and back-in-stock requests.
+
+7. BROWSER CACHE
+After publishing, sign out of the dashboard, hard refresh Safari (Cmd+Option+R), then sign in again.

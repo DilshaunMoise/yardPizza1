@@ -61,6 +61,16 @@
     <div id="inventory-list" class="inventory-list"></div>
   </section>
 
+  <section class="panel" id="menu-pricing-panel">
+    <div class="section-head"><div><h2>🥤 Drink Menu & Pricing</h2><p>Change drink prices and availability here. Customer and staff ordering update automatically.</p></div></div>
+    <div id="drink-price-list" class="drink-price-list"><span class="muted">Loading drink settings…</span></div>
+  </section>
+
+  <section class="panel" id="back-in-stock-panel">
+    <div class="section-head"><div><h2>🔔 Back-in-Stock Requests</h2><p>Customers who asked to be notified when a sold-out topping returns.</p></div><button class="ghost" id="refresh-requests">↻ Refresh</button></div>
+    <div id="back-in-stock-list" class="history-list"><span class="muted">Loading requests…</span></div>
+  </section>
+
   <section class="panel">
     <div class="section-head"><div><h2>📅 Daily Counts</h2><p>Record a physical count or weight and automatically see usage since the previous count.</p></div><button class="ghost" id="count-all-btn">Count All Items</button></div>
     <div id="daily-count-list" class="count-list"></div>
@@ -80,7 +90,7 @@
   <div class="form-grid">
     <label>Item name<input id="item-name" required placeholder="e.g. Mozzarella"></label>
     <label>Category<select id="item-category">
-      <option>Ingredients</option><option>Packaging</option><option>Customer Supplies</option><option>Cleaning & Store</option><option>Other</option>
+      <option>Ingredients</option><option>Packaging</option><option>Customer Supplies</option><option>Drinks</option><option>Cleaning & Store</option><option>Other</option>
     </select></label>
     <label>Quantity<input id="item-quantity" type="number" min="0" step="0.001" value="0"></label>
     <label>Unit<input id="item-unit" list="units" value="pieces" placeholder="kg, boxes, pieces…"></label>
