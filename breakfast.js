@@ -99,6 +99,7 @@ function nextSunday(){
   return d;
 }
 const target=nextSunday();
+const dateLabelDate=d=>{const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;};
 const dateLabel=d=>new Intl.DateTimeFormat('en-US',{weekday:'long',month:'long',day:'numeric'}).format(d);
 
 function setPageMessage(message, type='info'){
@@ -169,7 +170,7 @@ async function submitBreakfastOrder(name,phone,notes,selected,total,birthday){
   // A PostgREST .select() after INSERT therefore makes a valid order look like a
   // failed submission. The dashboard can read the order through the staff API.
   const {error}=await supabaseClient.from('breakfast_orders').insert({
-    target_sunday:target.toISOString().slice(0,10),
+    target_sunday:dateLabelDate(target),
     customer_name:name,
     customer_phone:phone,
     items:selected,
@@ -180,7 +181,7 @@ async function submitBreakfastOrder(name,phone,notes,selected,total,birthday){
   });
   if(error)throw error;
   if(document.querySelector('#join-rewards')?.checked && phone){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null,p_birthday:birthday||null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
-  return data;
+  return true;
 }
 
 document.querySelector('#breakfast-form')?.addEventListener('submit',async e=>{
