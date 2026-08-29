@@ -110,7 +110,7 @@ function render(){
   const period=document.querySelector('#period-copy');
   const cutoff=document.querySelector('#cutoff-note');
   const menu=document.querySelector('#menu');
-  if(period) period.textContent=`Pre-order now for ${dateLabel(target)}. Your name and phone number are required.`;
+  if(period) period.textContent=`Pre-order now for ${dateLabel(target)}. Order ahead for Sunday breakfast — name and phone are optional.`;
   if(cutoff) cutoff.textContent='Breakfast pre-orders are available throughout the week. Orders for the next Sunday close at the configured cutoff.';
   if(!menu)return;
 
@@ -175,7 +175,7 @@ async function submitBreakfastOrder(name,phone,notes,selected,total){
     status:'new'
   }).select('id').single();
   if(error)throw error;
-  if(document.querySelector('#join-rewards')?.checked){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null,p_birthday:birthday||null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
+  if(document.querySelector('#join-rewards')?.checked && phone){ try { await supabaseClient.rpc('ensure_rewards_member',{p_name:name,p_phone:phone,p_email:null,p_birthday:birthday||null}); } catch(rewardsError){ console.warn('Breakfast rewards signup failed:', rewardsError); } }
   return data;
 }
 
@@ -183,14 +183,14 @@ document.querySelector('#breakfast-form')?.addEventListener('submit',async e=>{
   e.preventDefault();
   const error=document.querySelector('#error');
   if(error)error.textContent='';
-  const name=document.querySelector('#customer-name')?.value.trim()||'';
-  const phone=document.querySelector('#customer-phone')?.value.trim()||'';
+  const name=document.querySelector('#customer-name')?.value.trim()||'Walk-in Customer';
+  const phoneRaw=document.querySelector('#customer-phone')?.value.trim()||'';
+  const phone=phoneRaw ? phoneRaw : null;
   const notes=document.querySelector('#notes')?.value.trim()||'';
   const birthday=document.querySelector('#birthday')?.value||'';
   const selected=selectedItems();
 
-  if(!name||!phone){if(error)error.textContent='Name and phone number are required.';return;}
-  if(!selected.length){if(error)error.textContent='Please choose at least one breakfast item.';return;}
+    if(!selected.length){if(error)error.textContent='Please choose at least one breakfast item.';return;}
 
   const total=selected.reduce((a,x)=>a+x.line_total,0);
   const submit=document.querySelector('#submit');

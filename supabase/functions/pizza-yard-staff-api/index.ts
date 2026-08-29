@@ -68,12 +68,12 @@ async function identifyStaff(req: Request) {
     if (typeof payload.exp !== "number" || payload.exp <= now - tolerance) throw new Error("Staff session has expired.");
     if (typeof payload.nbf === "number" && payload.nbf > now + tolerance) throw new Error("Staff session is not active yet.");
     userId = typeof payload.sub === "string" ? payload.sub : null;
-  } catch {
-    // Do not call Auth.getUser here: that endpoint also validates JWT time claims.
-    // The signature above is enough to establish the authenticated user ID.
+  } catch (error: any) {
+    console.error("pizza-yard-staff-api JWT verification failed:", error?.message || error);
+    throw new Error(`Invalid staff session: ${error?.message || "JWT verification failed."}`);
   }
 
-  if (!userId) throw new Error("Invalid staff session.");
+  if (!userId) throw new Error("Invalid staff session: missing user ID.");
 
   const staff = await sql`select user_id from public.staff_users where user_id = ${userId} limit 1`;
   if (!staff.length) throw new Error("This account is not authorized as Pizza Yard staff.");

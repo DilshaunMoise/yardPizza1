@@ -1,0 +1,1 @@
+Pizza Yard status update fix: dashboard status buttons now retry after session refresh and show the actual staff API error. Edge Function JWT verification errors are no longer silently swallowed. Redeploy pizza-yard-staff-api from this package, then hard-refresh the dashboard.

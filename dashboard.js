@@ -171,7 +171,21 @@ function subscribeToOrders(){
   pizzaOrdersPollTimer=setInterval(()=>{if(document.visibilityState==="visible")loadOrders()},3000);
 }
 async function setPayment(id,payment_status){const{error}=await pizzaYardEdgeClient.from("pizza_orders").update({payment_status}).eq("id",id);if(error){showToast("Could not update payment.");return}const o=state.orders.find(x=>x.id===id);if(o){o.payment_status=payment_status;renderDetails()}showToast(payment_status==="paid"?"Order marked paid.":"Order marked unpaid.")}
-async function updateStatus(id,status){const o0=state.orders.find(x=>x.id===id);if(status==="cancelled"&&!confirm(`Cancel order ${orderNumber(o0)}? This cannot be undone.`))return;const{error}=await pizzaYardEdgeClient.from("pizza_orders").update({status}).eq("id",id);if(error){console.error(error);showToast("Could not update order status.");return}const o=state.orders.find(x=>x.id===id);if(o)upsertOrder({...o,status});showToast(`Order ${orderNumber(o)} marked ${statusLabel(status)}.`);if(status==="ready") announceReady(o);}
+async function updateStatus(id,status){
+  const o0=state.orders.find(x=>x.id===id);
+  if(!o0)return;
+  if(status==="cancelled"&&!confirm(`Cancel order ${orderNumber(o0)}? This cannot be undone.`))return;
+  let result=await pizzaYardEdgeClient.from("pizza_orders").update({status}).eq("id",id);
+  if(result.error&&/401|expired|session|not authorized/i.test(result.error.message||"")){
+    try{await pizzaYardRefreshSession(supabaseClient)}catch{}
+    result=await pizzaYardEdgeClient.from("pizza_orders").update({status}).eq("id",id);
+  }
+  if(result.error){console.error("Pizza Yard status update failed",result.error);showToast(`Could not mark order ${statusLabel(status)}: ${result.error.message||"staff permission error"}`);return;}
+  const o=state.orders.find(x=>x.id===id);
+  if(o)upsertOrder({...o,status});
+  showToast(`Order ${orderNumber(o||o0)} marked ${statusLabel(status)}.`);
+  if(status==="ready")announceReady(o||o0);
+}
 function announceReady(o){if(!state.speechOn||!("speechSynthesis" in window))return;const u=new SpeechSynthesisUtterance(`Pizza Yard order ${o.order_number||""} is ready for ${o.order_type==="delivery"?"delivery":"pickup"}.`);u.rate=.9;window.speechSynthesis.cancel();window.speechSynthesis.speak(u)}
 async function loadAvailability(){const{data,error}=await pizzaYardEdgeClient.from("pizza_topping_availability").select("name,available");if(error){$("#availability-list").innerHTML='<span class="muted">Menu controls are unavailable until the database upgrade is run.</span>';return}state.availability=Object.fromEntries(data.map(r=>[r.name,r.available]));renderAvailability()}
 function renderAvailability(){$("#availability-list").innerHTML=TOPPINGS.map(t=>`<button class="availability-btn ${state.availability[t]!==false?"available":"soldout"}" data-topping="${esc(t)}"><span>${esc(t)}</span><strong>${state.availability[t]!==false?"AVAILABLE":"SOLD OUT"}</strong></button>`).join("");$$('.availability-btn').forEach(b=>b.addEventListener("click",()=>toggleAvailability(b.dataset.topping)))}

@@ -725,3 +725,8 @@ drop policy if exists "Staff can manage menu items" on public.menu_items;
 create policy "Staff can manage menu items" on public.menu_items for all to authenticated
 using(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())))
 with check(exists(select 1 from public.staff_users where staff_users.user_id=(select auth.uid())));
+
+-- Pizza Yard breakfast contact fields are optional for walk-in orders.
+alter table if exists public.breakfast_orders alter column customer_name drop not null;
+alter table if exists public.breakfast_orders alter column customer_phone drop not null;
+
