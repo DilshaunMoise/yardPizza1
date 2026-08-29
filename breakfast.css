@@ -30,3 +30,6 @@ input:focus,textarea:focus{outline:3px solid rgba(232,165,47,.22);border-color:v
 .item h3{font-size:16px}.qty button{transition:transform .15s ease,box-shadow .15s ease,background .15s ease}.qty button:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(42,27,14,.10);background:#fff7ed;}
 .panel-title>span{box-shadow:0 7px 16px rgba(201,54,45,.20)}
 @media(max-width:700px){.hero{padding:28px 20px 22px;border-radius:20px}}
+
+/* Breakfast premium polish */
+.menu-grid .item{box-shadow:0 8px 22px rgba(43,31,17,.045)}.menu-grid .item:hover{transform:translateY(-3px)}.summary{position:sticky;bottom:12px;z-index:8;box-shadow:0 18px 40px rgba(33,29,25,.20)}@media(max-width:700px){.summary{bottom:8px}}

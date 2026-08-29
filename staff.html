@@ -5,13 +5,13 @@
 <meta name="robots" content="noindex,nofollow"><title>Pizza Yard | Staff Ordering</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="staff.css?v=20260811-v2"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js?v=20260817-edgeapi"></script>
+<link rel="stylesheet" href="staff.css?v=20260829-fastcounter"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="staff.js?v=20260829-fastcounter"></script>
 </head>
 <body>
 <main class="staff-shell">
 <section id="login-view" class="login-view"><div class="login-card"><div class="brand">🍕 Pizza Yard</div><p class="eyebrow">STAFF ORDERING</p><h1>Take an order</h1><p class="muted">Sign in, enter the customer's order, and send it straight to the live dashboard.</p><form id="login-form"><label>Email<input id="login-email" type="email" autocomplete="username" required></label><label>Password<input id="login-password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit" id="login-button">Sign In</button><p id="login-error" class="error"></p></form></div></section>
 <section id="app-view" class="hidden">
-<header class="staff-header"><div><div class="brand">🍕 Pizza Yard</div><h1>Staff Order</h1><p>Tablet Store Mode • fast touch ordering</p></div><div class="header-actions"><button class="ghost" id="store-mode" type="button">📱 STORE MODE</button><a class="ghost" href="dashboard.html">Live Dashboard</a><button class="ghost" id="logout" type="button">Sign Out</button></div></header>
+<header class="staff-header"><div><div class="brand">🍕 Pizza Yard</div><h1>Staff Order</h1><p>Fast Counter Mode • built for one-person tablet ordering</p></div><div class="header-actions"><button class="ghost" id="store-mode" type="button">📱 STORE MODE</button><a class="ghost" href="dashboard.html">Live Dashboard</a><button class="ghost" id="logout" type="button">Sign Out</button></div></header>
 <div class="staff-layout">
 <form id="staff-order-form" class="card" novalidate>
 <div class="order-category-toggle" aria-label="Order type">
@@ -29,6 +29,7 @@
 <div id="pizza-staff-section">
 <div class="section-head"><div><span class="eyebrow">PIZZA</span><h2>Build the 12&quot; pizza</h2></div><span class="badge">12&quot; ONLY</span></div>
 <div class="mode-toggle"><button type="button" class="mode active" data-mode="whole">Whole Pizza</button><button type="button" class="mode" data-mode="half">Half &amp; Half</button></div>
+<div class="fast-picks" id="fast-picks"><div class="fast-picks-head"><div><span class="eyebrow">FAST COUNTER</span><h3>Quick-add a popular pizza</h3></div><span class="fast-hint">1 tap → toppings</span></div><div class="fast-picks-grid"><button type="button" class="fast-pick" data-preset="pepperoni"><b>🍕 Pepperoni</b><span>1 topping</span></button><button type="button" class="fast-pick" data-preset="pep-mush"><b>🍕 Pepperoni + Mushroom</b><span>2 toppings</span></button><button type="button" class="fast-pick" data-preset="meat"><b>🔥 Meat Lover</b><span>Pepperoni • Bacon • Ham • Sausage</span></button><button type="button" class="fast-pick" data-preset="veg"><b>🌱 Veg</b><span>Bell Peppers • Mushroom • Corn • Veg</span></button></div></div>
 <div id="whole-builder"><div id="whole-toppings" class="topping-grid"></div><p id="whole-error" class="error"></p></div>
 <div id="half-builder" class="hidden"><div class="half-grid"><section><h3>Left half</h3><div id="left-toppings" class="topping-grid"></div></section><section><h3>Right half</h3><div id="right-toppings" class="topping-grid"></div></section></div><p class="muted small">Pricing counts unique toppings across both halves. The first two unique toppings are included.</p><p id="half-error" class="error"></p></div>
 <div class="quantity-row"><div><span class="eyebrow">QUANTITY</span><h3>How many boxes?</h3></div><div class="qty"><button type="button" id="qty-minus">−</button><output id="qty">1</output><button type="button" id="qty-plus">+</button></div></div>
